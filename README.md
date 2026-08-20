@@ -1,5 +1,7 @@
 # Video Meetings — monorepo
 
+> Текущее состояние работ, планы и принятые решения — в [PROGRESS.md](PROGRESS.md).
+
 pnpm workspaces + Turborepo. Внутри два приложения и два пакета общих конфигов.
 
 ```
