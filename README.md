@@ -11,6 +11,30 @@ packages/
   typescript-config/   общие tsconfig: base / nextjs / nestjs
 ```
 
+## Что уже работает
+
+| Маршрут                           | Описание                                                                                              |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `/auth/login`                     | Форма входа, ссылка на регистрацию, ошибка при неверных данных                                        |
+| `/`                               | Только для авторизованных: приветствие, счётчик встреч, 3 последние встречи, кнопки создания и выхода |
+| `/auth/register`, `/meetings/new` | Заглушки                                                                                              |
+| `POST /api/auth/login`            | `{ email, password }` → `{ accessToken, user }`, 401 при неверных данных                              |
+| `GET /api/auth/me`                | Текущий пользователь по Bearer-токену                                                                 |
+| `GET /api/meetings?limit=3`       | `{ items, total }` — встречи текущего пользователя                                                    |
+
+Данные пока хранятся в памяти процесса Nest: перезапуск API сбрасывает их к seed-набору.
+
+### Тестовые аккаунты
+
+| Email              | Пароль        |
+| ------------------ | ------------- |
+| `demo@example.com` | `password123` |
+| `anna@example.com` | `password123` |
+
+### Как устроена авторизация
+
+`POST /api/auth/login` возвращает JWT. Server action в Next кладёт его в **httpOnly cookie** `access_token` — в браузерный JavaScript токен не попадает, все запросы к Nest уходят только с сервера. `src/middleware.ts` проверяет подпись и срок токена через `jose` и уводит на `/auth/login`, попутно удаляя недействительную cookie.
+
 ## Требования
 
 - Node.js >= 20.11 (проверено на 24.x)
@@ -21,8 +45,12 @@ packages/
 
 ```bash
 pnpm install
-cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
+cp .env.example .env                          # только для docker-compose
 ```
+
+> **Важно:** `JWT_SECRET` в `apps/api/.env` и `apps/web/.env.local` должен совпадать — иначе middleware не сможет проверить выданный API токен и вход будет зацикливаться.
 
 ## Запуск
 
