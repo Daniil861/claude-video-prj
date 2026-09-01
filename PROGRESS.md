@@ -3,8 +3,8 @@
 Файл-хендофф: что сделано, что дальше, какие решения уже приняты и почему.
 Обновлять при каждом заметном шаге. Технические детали запуска — в [README.md](README.md).
 
-**Обновлено:** 2026-08-20
-**Последний коммит:** `18a00ea feat: add jwt login flow and protected home page`
+**Обновлено:** 2026-09-01
+**Последний коммит:** `a2c0d5a chore: add agent skills`
 
 ---
 
@@ -42,6 +42,16 @@ pnpm workspaces + Turborepo, два приложения и два пакета 
 - `src/middleware.ts` — проверяет подпись и срок JWT через `jose`, удаляет недействительную cookie.
 - `/auth/register`, `/meetings/new` — заглушки.
 - `src/lib/api.ts` — серверный клиент к Nest. **Не импортировать из клиентских компонентов**: токен не должен попадать в браузер.
+
+---
+
+### 3. Скиллы агента и CLAUDE.md (`a2c0d5a` + коммит с документацией)
+
+- `.claude/skills/` и `.agents/skills/` — установленные скиллы (`heroui-react`, `git-commit`, `requesting-code-review`), плюс `skills-lock.json`. Дубль в двух папках — так их кладёт установщик, обе версии одинаковы.
+- `CLAUDE.md` в корне и в каждом из `apps/*` — контекст для агента: команды, соглашения, ловушки конкретного приложения.
+  - Корневой — про монорепозиторий, env, Conventional Commits и ссылку на этот файл.
+  - `apps/web/CLAUDE.md` — про серверную границу (`lib/api.ts` и `lib/session.ts` не импортировать из клиентских компонентов), CSS-модули вместо Tailwind, `redirect()` вне `try/catch`, `config.matcher` в middleware.
+  - `apps/api/CLAUDE.md` — про хранилища в памяти за интерфейсами сервисов, `@CurrentUser()` вместо чтения `request`, `whitelist` в `ValidationPipe`, осознанный `as` в `auth.module.ts`.
 
 ---
 
