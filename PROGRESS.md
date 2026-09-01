@@ -47,7 +47,7 @@ pnpm workspaces + Turborepo, два приложения и два пакета 
 
 ### 3. Скиллы агента и CLAUDE.md (`a2c0d5a` + коммит с документацией)
 
-- `.claude/skills/` и `.agents/skills/` — установленные скиллы (`heroui-react`, `git-commit`, `requesting-code-review`), плюс `skills-lock.json`. Дубль в двух папках — так их кладёт установщик, обе версии одинаковы.
+- `.claude/skills/` и `.agents/skills/` — установленные скиллы (`heroui-react`, `git-commit`, `requesting-code-review`, `vercel-react-best-practices`), плюс `skills-lock.json`. Дубль в двух папках — так их кладёт установщик, обе версии одинаковы.
 - `CLAUDE.md` в корне и в каждом из `apps/*` — контекст для агента: команды, соглашения, ловушки конкретного приложения.
   - Корневой — про монорепозиторий, env, Conventional Commits и ссылку на этот файл.
   - `apps/web/CLAUDE.md` — про серверную границу (`lib/api.ts` и `lib/session.ts` не импортировать из клиентских компонентов), CSS-модули вместо Tailwind, `redirect()` вне `try/catch`, `config.matcher` в middleware.
