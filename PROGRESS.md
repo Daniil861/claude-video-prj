@@ -48,7 +48,8 @@ pnpm workspaces + Turborepo, два приложения и два пакета 
 ### 3. Скиллы агента и CLAUDE.md (`a2c0d5a` + коммит с документацией)
 
 - `.claude/skills/` и `.agents/skills/` — установленные скиллы (`heroui-react`, `git-commit`, `requesting-code-review`, `vercel-react-best-practices`), плюс `skills-lock.json`. Дубль в двух папках — так их кладёт установщик, обе версии одинаковы.
-- `CLAUDE.md` в корне и в каждом из `apps/*` — контекст для агента: команды, соглашения, ловушки конкретного приложения.
+- `CLAUDE.md` в корне и в каждом из `apps/*` — контекст для агента: команды, соглашения, ловушки конкретного приложения. Отдельный раздел требует обновлять документацию в том же коммите, что и изменение архитектуры.
+- `.claude/settings.json` + `.claude/hooks/format-file.mjs` — хук `PostToolUse`, прогоняющий Prettier сразу после правки файла агентом. Написан на Node, а не на bash с `jq`: `jq` в системе нет, а Node снимает проблему путей Windows ↔ Git Bash.
   - Корневой — про монорепозиторий, env, Conventional Commits и ссылку на этот файл.
   - `apps/web/CLAUDE.md` — про серверную границу (`lib/api.ts` и `lib/session.ts` не импортировать из клиентских компонентов), CSS-модули вместо Tailwind, `redirect()` вне `try/catch`, `config.matcher` в middleware.
   - `apps/api/CLAUDE.md` — про хранилища в памяти за интерфейсами сервисов, `@CurrentUser()` вместо чтения `request`, `whitelist` в `ValidationPipe`, осознанный `as` в `auth.module.ts`.
