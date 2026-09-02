@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  meetings     Meeting[]
+}
+
+model Meeting {
+  id              String   @id @default(cuid())
+  ownerId         String
+  owner           User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title           String
+  startsAt        DateTime
+  durationMinutes Int
+  createdAt       DateTime @default(now())
+
+  @@index([ownerId, startsAt])
+}

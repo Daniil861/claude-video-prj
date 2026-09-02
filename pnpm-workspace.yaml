@@ -3,5 +3,11 @@ packages:
   - 'packages/*'
 
 allowBuilds:
+  # Prisma needs its postinstall to fetch the query engine.
+  '@prisma/engines': true
+  prisma: true
+  esbuild: false
+  msgpackr-extract: false
   sharp: false
   unrs-resolver: false
+  workerd: false
