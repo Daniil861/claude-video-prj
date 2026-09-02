@@ -63,7 +63,7 @@ pnpm dev:web        # только Next.js
 pnpm dev:api        # только Nest.js (watch)
 pnpm lint           # ESLint по всем пакетам
 pnpm typecheck      # tsc --noEmit по всем пакетам
-pnpm test           # unit-тесты (фактически только apps/api)
+pnpm test           # unit-тесты (фактически только apps/api), БД не нужна
 pnpm build
 pnpm format         # Prettier
 ```
@@ -77,7 +77,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 pnpm --filter @video-meetings/api test:e2e
 ```
 
-Ожидаемо: 14 unit- и 11 e2e-тестов проходят, lint и typecheck чистые.
+Ожидаемо: 8 unit- и 28 e2e-тестов проходят, lint и typecheck чистые. E2E требуют поднятого Postgres и работают с отдельной БД `video_meetings_test`.
 
 ## Окружение
 
@@ -86,8 +86,10 @@ pnpm --filter @video-meetings/api test:e2e
   - `apps/api/.env` ← `apps/api/.env.example`
   - `apps/web/.env.local` ← `apps/web/.env.example`
   - корневой `.env` — только для docker-compose.
+  - `apps/api/.env.test` — БД для e2e; лежит в репозитории, секретов не содержит.
+- **`DATABASE_URL` обязателен в `apps/api/.env`** — без него `PrismaService` падает при старте.
 - **`JWT_SECRET` обязан совпадать** в `apps/api/.env` и `apps/web/.env.local`, иначе middleware не проверит токен и вход зациклится.
-- `docker-compose.yml` поднимает Postgres 16, но **пока никем не используется** — заготовка под Prisma.
+- `docker-compose.yml` поднимает Postgres 16 — **API без него не стартует**. На пустой БД нужны `db:deploy` и `db:seed` (см. README).
 - `pnpm dev` не поднимется, если на портах 3000/3001 висят процессы с прошлого запуска.
 
 ## Соглашения
@@ -101,13 +103,14 @@ pnpm --filter @video-meetings/api test:e2e
 
 ## Архитектурные решения (не менять без обсуждения)
 
-| Решение                                                  | Почему                                                                                      |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Данные в памяти, а не БД                                 | Договорились начать без Docker; слой репозитория меняется на Prisma без правки контроллеров |
-| JWT в httpOnly cookie, а не localStorage                 | Токен недоступен браузерному JS; главная — server component                                 |
-| Server Actions вместо route handlers в Next              | Меньше слоёв: нет промежуточного `/api/...` в Next                                          |
-| Свой `JwtAuthGuard` вместо passport-jwt                  | ~20 строк вместо трёх зависимостей и стратегий                                              |
-| Middleware проверяет подпись и срок, а не наличие cookie | Иначе просроченный токен зацикливает редиректы                                              |
-| Тесты только на API                                      | Фронт проверяется вручную/браузером                                                         |
+| Решение                                                  | Почему                                                                                                                               |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Postgres через Prisma 7, доступ только из сервисов       | Отменяет прежнее «данные в памяти»: расчёт на замену внутренностей сервисов оправдался — контроллеры получили лишь `Promise` в типах |
+| Отдельная БД `video_meetings_test` для e2e               | Прогон чистит и засевает таблицы; на общей БД он стирал бы данные из браузера                                                        |
+| JWT в httpOnly cookie, а не localStorage                 | Токен недоступен браузерному JS; главная — server component                                                                          |
+| Server Actions вместо route handlers в Next              | Меньше слоёв: нет промежуточного `/api/...` в Next                                                                                   |
+| Свой `JwtAuthGuard` вместо passport-jwt                  | ~20 строк вместо трёх зависимостей и стратегий                                                                                       |
+| Middleware проверяет подпись и срок, а не наличие cookie | Иначе просроченный токен зацикливает редиректы                                                                                       |
+| Тесты только на API                                      | Фронт проверяется вручную/браузером                                                                                                  |
 
 Полный список с контекстом — в PROGRESS.md.

@@ -68,6 +68,102 @@ describe('Auth and meetings (e2e)', () => {
     });
   });
 
+  describe('POST /api/auth/register', () => {
+    let uniqueEmailCounter = 0;
+
+    // The user store is in-memory and shared by every test in this file, so each
+    // registration test claims its own address instead of a fixed one.
+    const uniqueEmail = () => `reg-${Date.now()}-${(uniqueEmailCounter += 1)}@example.com`;
+
+    const postRegister = (body: Record<string, unknown>) =>
+      request(app.getHttpServer()).post('/api/auth/register').send(body);
+
+    const register = async (body: Record<string, unknown>): Promise<LoginBody> => {
+      const response = await postRegister(body).expect(201);
+      return response.body as LoginBody;
+    };
+
+    it('creates the user and returns a token plus the public user', async () => {
+      const email = uniqueEmail();
+
+      const body = await register({ email, password: 'password123' });
+
+      expect(typeof body.accessToken).toBe('string');
+      expect(body.accessToken.split('.')).toHaveLength(3);
+      expect(body.user.email).toBe(email);
+      expect(body.user.id).toEqual(expect.any(String));
+    });
+
+    it('derives the name from the local part of the email', async () => {
+      const email = uniqueEmail();
+
+      const body = await register({ email, password: 'password123' });
+
+      expect(body.user.name).toBe(email.split('@')[0]);
+    });
+
+    it('never leaks the password hash', async () => {
+      const body = await register({ email: uniqueEmail(), password: 'password123' });
+
+      expect(body.user).not.toHaveProperty('passwordHash');
+    });
+
+    it('persists the user so the same credentials log in afterwards', async () => {
+      const credentials = { email: uniqueEmail(), password: 'password123' };
+      const registered = await register(credentials);
+
+      const response = await postLogin(credentials).expect(200);
+
+      expect((response.body as LoginBody).user).toEqual(registered.user);
+    });
+
+    it('issues a token that identifies the new user on GET /api/auth/me', async () => {
+      const registered = await register({ email: uniqueEmail(), password: 'password123' });
+
+      await request(app.getHttpServer())
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${registered.accessToken}`)
+        .expect(200)
+        .expect(registered.user);
+    });
+
+    it('returns 409 when the email is already registered', async () => {
+      const credentials = { email: uniqueEmail(), password: 'password123' };
+      await register(credentials);
+
+      await postRegister(credentials).expect(409);
+    });
+
+    it('treats emails differing only in case as already registered', async () => {
+      const email = uniqueEmail();
+      await register({ email, password: 'password123' });
+
+      await postRegister({ email: email.toUpperCase(), password: 'password123' }).expect(409);
+    });
+
+    it('returns 409 for a seeded email and leaves that user untouched', async () => {
+      await postRegister({ ...CREDENTIALS, password: 'a-different-password' }).expect(409);
+
+      const body = await loginAsDemoUser();
+      expect(body.user).toEqual(DEMO_USER);
+    });
+
+    it('returns 400 for a malformed body', async () => {
+      await postRegister({ email: 'not-an-email', password: 'x' }).expect(400);
+    });
+
+    it('does not create a user on login, only on register', async () => {
+      const credentials = { email: uniqueEmail(), password: 'password123' };
+
+      // Logging in with an unknown email must not register it as a side effect,
+      // otherwise the registration below would collide with 409.
+      await postLogin(credentials).expect(401);
+
+      const body = await register(credentials);
+      expect(body.user.email).toBe(credentials.email);
+    });
+  });
+
   describe('GET /api/auth/me', () => {
     it('returns the current user for a valid token', async () => {
       const { accessToken } = await loginAsDemoUser();

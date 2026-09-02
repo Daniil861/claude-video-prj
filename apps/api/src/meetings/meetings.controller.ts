@@ -16,7 +16,7 @@ export class MeetingsController {
   findMine(
     @CurrentUser() user: JwtPayload,
     @Query('limit', new DefaultValuePipe(3), ParseIntPipe) limit: number,
-  ): MeetingsPage {
+  ): Promise<MeetingsPage> {
     return this.meetingsService.findPageByUser(user.sub, Math.min(Math.max(limit, 1), MAX_LIMIT));
   }
 }

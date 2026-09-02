@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { compare } from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { toPublicUser } from '../users/user.entity';
+import type { User } from '../users/user.entity';
 import type { PublicUser } from '../users/user.entity';
 import type { JwtPayload } from './jwt-payload.interface';
 
@@ -19,7 +20,7 @@ export class AuthService {
   ) {}
 
   async login(email: string, password: string): Promise<LoginResult> {
-    const user = this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmail(email);
 
     // Compare against a found user only, but fail with the same message either way
     // so the response does not reveal whether the email exists.
@@ -27,6 +28,18 @@ export class AuthService {
       throw new UnauthorizedException('Неверный email или пароль');
     }
 
+    return this.issueToken(user);
+  }
+
+  async register(email: string, password: string): Promise<LoginResult> {
+    // UsersService rejects an email that is already taken, so registration never
+    // silently overwrites an existing account.
+    const user = await this.usersService.create(email, password);
+
+    return this.issueToken(user);
+  }
+
+  private async issueToken(user: User): Promise<LoginResult> {
     const payload: JwtPayload = { sub: user.id, email: user.email };
 
     return {
@@ -35,8 +48,8 @@ export class AuthService {
     };
   }
 
-  getPublicUserById(id: string): PublicUser {
-    const user = this.usersService.findById(id);
+  async getPublicUserById(id: string): Promise<PublicUser> {
+    const user = await this.usersService.findById(id);
 
     if (!user) {
       throw new UnauthorizedException('Пользователь не найден');

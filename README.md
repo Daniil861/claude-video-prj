@@ -21,10 +21,11 @@ packages/
 | `/`                               | Только для авторизованных: приветствие, счётчик встреч, 3 последние встречи, кнопки создания и выхода |
 | `/auth/register`, `/meetings/new` | Заглушки                                                                                              |
 | `POST /api/auth/login`            | `{ email, password }` → `{ accessToken, user }`, 401 при неверных данных                              |
+| `POST /api/auth/register`         | `{ email, password }` → 201 и то же тело; 409, если email занят. `name` — локальная часть email       |
 | `GET /api/auth/me`                | Текущий пользователь по Bearer-токену                                                                 |
 | `GET /api/meetings?limit=3`       | `{ items, total }` — встречи текущего пользователя                                                    |
 
-Данные пока хранятся в памяти процесса Nest: перезапуск API сбрасывает их к seed-набору.
+Данные хранятся в Postgres через Prisma и переживают перезапуск API. Сид больше не накатывается при старте приложения — это отдельная команда `db:seed`.
 
 ### Тестовые аккаунты
 
@@ -41,7 +42,7 @@ packages/
 
 - Node.js >= 20.11 (проверено на 24.x)
 - pnpm 11 — `corepack enable pnpm`
-- Docker (опционально, для локальной Postgres)
+- Docker — для Postgres. **Обязателен:** без базы API не стартует
 
 ## Установка
 
@@ -50,7 +51,13 @@ pnpm install
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
 cp .env.example .env                          # только для docker-compose
+
+docker compose up -d                          # Postgres 16 на порту 5432
+pnpm --filter @video-meetings/api db:deploy   # накатить миграции
+pnpm --filter @video-meetings/api db:seed     # тестовые аккаунты и встречи
 ```
+
+Без последнего шага приложение поднимется, но войти будет некем: таблицы пустые.
 
 > **Важно:** `JWT_SECRET` в `apps/api/.env` и `apps/web/.env.local` должен совпадать — иначе middleware не сможет проверить выданный API токен и вход будет зацикливаться.
 
@@ -71,18 +78,34 @@ pnpm dev:api      # только Nest.js (watch)
 | `pnpm start`                        | запуск собранных приложений             |
 | `pnpm lint` / `pnpm lint:fix`       | ESLint по всем пакетам                  |
 | `pnpm typecheck`                    | `tsc --noEmit` по всем пакетам          |
-| `pnpm test`                         | unit-тесты                              |
+| `pnpm test`                         | unit-тесты (БД не нужна)                |
 | `pnpm format` / `pnpm format:check` | Prettier                                |
 | `pnpm clean`                        | удалить артефакты сборки и node_modules |
 
 Адресный запуск любого скрипта: `pnpm --filter @video-meetings/api <script>`.
 
-## Инфраструктура
+## База данных
 
 ```bash
 docker compose up -d      # Postgres 16 на порту 5432
 docker compose down
 ```
+
+Скрипты Prisma — в `apps/api`, запуск через `pnpm --filter @video-meetings/api <script>`:
+
+| Скрипт        | Что делает                                                  |
+| ------------- | ----------------------------------------------------------- |
+| `db:migrate`  | создать и накатить миграцию по изменениям схемы (dev)       |
+| `db:deploy`   | накатить уже созданные миграции; создаёт БД, если её нет    |
+| `db:seed`     | засеять тестовые аккаунты и встречи (идемпотентно)          |
+| `db:reset`    | удалить БД, накатить всё заново и засеять                   |
+| `db:generate` | перегенерировать Prisma Client (также идёт в `postinstall`) |
+
+### Тесты и БД
+
+`pnpm test` — unit-тесты, БД не требуется.
+
+`pnpm --filter @video-meetings/api test:e2e` работает с **отдельной** базой `video_meetings_test` из `apps/api/.env.test`. Перед прогоном он сам накатывает миграции (создавая БД при необходимости), чистит таблицы и засевает их заново. Дев-база не трогается, так что гонять тесты при живом `pnpm dev` безопасно.
 
 ## Соглашения
 

@@ -17,13 +17,15 @@ describe('AuthService', () => {
       email: 'demo@example.com',
       name: 'Demo User',
       passwordHash: await hash(password, 4),
+      createdAt: new Date(),
     };
   });
 
   beforeEach(() => {
     const usersService = {
-      findByEmail: (email: string) => (email.toLowerCase() === user.email ? user : undefined),
-      findById: (id: string) => (id === user.id ? user : undefined),
+      findByEmail: (email: string) =>
+        Promise.resolve(email.toLowerCase() === user.email ? user : null),
+      findById: (id: string) => Promise.resolve(id === user.id ? user : null),
     } as unknown as UsersService;
 
     jwtService = new JwtService({ secret: 'test-secret', signOptions: { expiresIn: '1h' } });
@@ -65,16 +67,16 @@ describe('AuthService', () => {
   });
 
   describe('getPublicUserById', () => {
-    it('returns the public user', () => {
-      expect(service.getPublicUserById(user.id)).toEqual({
+    it('returns the public user', async () => {
+      await expect(service.getPublicUserById(user.id)).resolves.toEqual({
         id: user.id,
         email: user.email,
         name: user.name,
       });
     });
 
-    it('throws for an unknown id', () => {
-      expect(() => service.getPublicUserById('usr_missing')).toThrow(UnauthorizedException);
+    it('rejects an unknown id', async () => {
+      await expect(service.getPublicUserById('usr_missing')).rejects.toThrow(UnauthorizedException);
     });
   });
 });

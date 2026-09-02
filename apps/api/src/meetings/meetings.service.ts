@@ -1,84 +1,54 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import type { Meeting as MeetingRow } from '@prisma/client';
 import type { CreateMeetingInput, Meeting, MeetingsPage } from './meeting.entity';
 
 const DEFAULT_LIMIT = 3;
 
-const SEED_MEETINGS: CreateMeetingInput[] = [
-  {
-    ownerId: 'usr_1',
-    title: 'Weekly sync',
-    startsAt: '2026-08-24T09:00:00.000Z',
-    durationMinutes: 30,
-  },
-  {
-    ownerId: 'usr_1',
-    title: 'Product review',
-    startsAt: '2026-08-21T13:30:00.000Z',
-    durationMinutes: 60,
-  },
-  {
-    ownerId: 'usr_1',
-    title: 'Design handoff',
-    startsAt: '2026-08-19T15:00:00.000Z',
-    durationMinutes: 45,
-  },
-  {
-    ownerId: 'usr_1',
-    title: 'Retrospective',
-    startsAt: '2026-08-14T11:00:00.000Z',
-    durationMinutes: 60,
-  },
-  {
-    ownerId: 'usr_2',
-    title: 'Onboarding call',
-    startsAt: '2026-08-20T08:00:00.000Z',
-    durationMinutes: 30,
-  },
-];
-
-/**
- * In-memory meeting store. Swap the internals for a database repository later —
- * consumers only depend on the query methods below.
- */
+/** Meetings are stored in Postgres; consumers only depend on the methods below. */
 @Injectable()
-export class MeetingsService implements OnModuleInit {
-  private meetings: Meeting[] = [];
-  private nextId = 1;
+export class MeetingsService {
+  constructor(private readonly prisma: PrismaService) {}
 
-  onModuleInit(): void {
-    this.reset();
-    for (const meeting of SEED_MEETINGS) {
-      this.create(meeting);
-    }
+  async create(input: CreateMeetingInput): Promise<Meeting> {
+    const row = await this.prisma.meeting.create({
+      data: { ...input, startsAt: new Date(input.startsAt) },
+    });
+
+    return toMeeting(row);
   }
 
-  /** Drops every stored meeting. Used by the seed step and by tests. */
-  reset(): void {
-    this.meetings = [];
-    this.nextId = 1;
+  async findRecentByUser(ownerId: string, limit: number = DEFAULT_LIMIT): Promise<Meeting[]> {
+    const rows = await this.prisma.meeting.findMany({
+      where: { ownerId },
+      orderBy: { startsAt: 'desc' },
+      take: limit,
+    });
+
+    return rows.map(toMeeting);
   }
 
-  create(input: CreateMeetingInput): Meeting {
-    const meeting: Meeting = { id: `mtg_${this.nextId++}`, ...input };
-    this.meetings.push(meeting);
-    return meeting;
+  countByUser(ownerId: string): Promise<number> {
+    return this.prisma.meeting.count({ where: { ownerId } });
   }
 
-  findRecentByUser(ownerId: string, limit: number = DEFAULT_LIMIT): Meeting[] {
-    return this.meetings
-      .filter((meeting) => meeting.ownerId === ownerId)
-      .sort((a, b) => b.startsAt.localeCompare(a.startsAt))
-      .slice(0, limit);
-  }
+  async findPageByUser(ownerId: string, limit: number = DEFAULT_LIMIT): Promise<MeetingsPage> {
+    const [items, total] = await Promise.all([
+      this.findRecentByUser(ownerId, limit),
+      this.countByUser(ownerId),
+    ]);
 
-  countByUser(ownerId: string): number {
-    return this.meetings.filter((meeting) => meeting.ownerId === ownerId).length;
+    return { items, total };
   }
+}
 
-  findPageByUser(ownerId: string, limit: number = DEFAULT_LIMIT): MeetingsPage {
-    return {
-      items: this.findRecentByUser(ownerId, limit),
-      total: this.countByUser(ownerId),
-    };
-  }
+/** The API contract exposes startsAt as an ISO string, the column is a timestamp. */
+function toMeeting(row: MeetingRow): Meeting {
+  return {
+    id: row.id,
+    ownerId: row.ownerId,
+    title: row.title,
+    startsAt: row.startsAt.toISOString(),
+    durationMinutes: row.durationMinutes,
+  };
 }

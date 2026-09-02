@@ -1,56 +1,67 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { hash } from 'bcryptjs';
+import { PrismaService } from '../prisma/prisma.service';
 import type { User } from './user.entity';
 
 const BCRYPT_ROUNDS = 10;
+const UNIQUE_CONSTRAINT_FAILED = 'P2002';
 
-interface SeedUser {
-  id: string;
-  email: string;
-  name: string;
-  password: string;
-}
-
-/**
- * In-memory user store. Swap the internals for a database repository later —
- * consumers only depend on findByEmail/findById.
- */
+/** Users are stored in Postgres; consumers only depend on the methods below. */
 @Injectable()
-export class UsersService implements OnModuleInit {
-  private readonly users = new Map<string, User>();
+export class UsersService {
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor(private readonly config: ConfigService) {}
+  /**
+   * Registers a new user. The name is derived from the local part of the email,
+   * since registration only asks for credentials.
+   */
+  async create(email: string, password: string): Promise<User> {
+    const normalized = normalizeEmail(email);
 
-  async onModuleInit(): Promise<void> {
-    const defaultPassword = this.config.get<string>('SEED_USER_PASSWORD') ?? 'password123';
+    if (await this.findByEmail(normalized)) {
+      throw new ConflictException('Пользователь с таким email уже существует');
+    }
 
-    const seed: SeedUser[] = [
-      {
-        id: 'usr_1',
-        email: this.config.get<string>('SEED_USER_EMAIL') ?? 'demo@example.com',
-        name: 'Demo User',
-        password: defaultPassword,
-      },
-      {
-        id: 'usr_2',
-        email: 'anna@example.com',
-        name: 'Anna Petrova',
-        password: defaultPassword,
-      },
-    ];
+    try {
+      return await this.prisma.user.create({
+        data: {
+          email: normalized,
+          name: localPartOf(normalized),
+          passwordHash: await hash(password, BCRYPT_ROUNDS),
+        },
+      });
+    } catch (error) {
+      // The check above loses to a concurrent insert; the unique index does not.
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('Пользователь с таким email уже существует');
+      }
 
-    for (const { password, ...rest } of seed) {
-      this.users.set(rest.id, { ...rest, passwordHash: await hash(password, BCRYPT_ROUNDS) });
+      throw error;
     }
   }
 
-  findByEmail(email: string): User | undefined {
-    const normalized = email.trim().toLowerCase();
-    return [...this.users.values()].find((user) => user.email.toLowerCase() === normalized);
+  findByEmail(email: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { email: normalizeEmail(email) } });
   }
 
-  findById(id: string): User | undefined {
-    return this.users.get(id);
+  findById(id: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { id } });
   }
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function localPartOf(email: string): string {
+  return email.slice(0, email.indexOf('@'));
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === UNIQUE_CONSTRAINT_FAILED
+  );
 }

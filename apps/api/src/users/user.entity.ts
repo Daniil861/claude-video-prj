@@ -1,14 +1,13 @@
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  passwordHash: string;
-}
+import type { User as UserRow } from '@prisma/client';
 
-/** User data safe to send to the client. */
-export type PublicUser = Omit<User, 'passwordHash'>;
+export type User = UserRow;
+
+/**
+ * User data safe to send to the client. Spelled out as an allow-list rather than
+ * Omit<User, 'passwordHash'>, so a new column cannot leak into API responses.
+ */
+export type PublicUser = Pick<User, 'id' | 'email' | 'name'>;
 
 export function toPublicUser(user: User): PublicUser {
-  const { passwordHash: _passwordHash, ...publicUser } = user;
-  return publicUser;
+  return { id: user.id, email: user.email, name: user.name };
 }
