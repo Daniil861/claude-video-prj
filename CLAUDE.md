@@ -97,6 +97,7 @@ pnpm --filter @video-meetings/api test:e2e
 - **Коммиты — Conventional Commits**, проверяются commitlint через хук `commit-msg`. lint-staged прогоняет Prettier по staged-файлам.
 - Prettier: одинарные кавычки, точки с запятой, trailing comma `all`, printWidth 100, 2 пробела. Не форматируй руками — `pnpm format`.
 - **Форматирование автоматическое на двух рубежах:** хук Claude Code `PostToolUse` (`.claude/settings.json` → `.claude/hooks/format-file.mjs`) прогоняет Prettier сразу после правки файла, а husky `pre-commit` → lint-staged — перед коммитом. Скрипт работает только с файлами внутри репозитория и молча выходит, если payload неожиданный или Prettier не установлен. Посмотреть или отключить хук — команда `/hooks`.
+- **Playwright MCP** подключён на уровне проекта (`.mcp.json` в корне, `npx @playwright/mcp@latest`). Через него агент проверяет фронт в браузере — так закрывается «фронт проверяется вручную/браузером». При первом запуске Claude Code попросит одобрить сервер; статус — `/mcp` или `claude mcp list`.
 - TypeScript strict, включая `noUncheckedIndexedAccess`. `any` не использовать; для внешних данных — `unknown` + сужение (см. `apps/web/src/lib/api.ts`).
 - `no-console` — предупреждение, разрешены только `warn`/`error`. В Nest используй `Logger`.
 - Переносы строк — LF (`.gitattributes`).
