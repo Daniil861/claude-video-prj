@@ -22,6 +22,7 @@ model Meeting {
   title           String
   startsAt        DateTime
   durationMinutes Int
+  participants    String[] @default([])
   createdAt       DateTime @default(now())
 
   @@index([ownerId, startsAt])

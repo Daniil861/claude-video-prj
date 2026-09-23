@@ -15,7 +15,7 @@ pnpm --filter @video-meetings/api lint
 pnpm --filter @video-meetings/api typecheck
 ```
 
-Ожидаемо: 8 unit- и 28 e2e-тестов проходят. E2E требуют поднятого Postgres — они работают с отдельной БД `video_meetings_test` из `.env.test` и сами накатывают на неё миграции и сид.
+Ожидаемо: 8 unit- и 47 e2e-тестов проходят. E2E требуют поднятого Postgres — они работают с отдельной БД `video_meetings_test` из `.env.test` и сами накатывают на неё миграции и сид.
 
 ```bash
 pnpm --filter @video-meetings/api db:migrate   # создать и накатить миграцию по изменениям схемы
@@ -34,7 +34,8 @@ src/
                  dto/login.dto.ts, dto/register.dto.ts
   prisma/        prisma.service.ts (PrismaClient + driver adapter), prisma.module.ts (@Global)
   users/         users.service.ts, user.entity.ts
-  meetings/      meetings.service.ts, meetings.controller.ts, meeting.entity.ts
+  meetings/      meetings.service.ts, meetings.controller.ts, meeting.entity.ts,
+                 dto/create-meeting.dto.ts
 prisma/          schema.prisma, migrations/, seed.ts, seed-data.ts
 prisma.config.ts конфиг Prisma 7: путь к схеме, DATABASE_URL, команда сида
 test/            e2e- и интеграционные спеки, global-setup.ts, setup-e2e.ts, jest-e2e.json
@@ -42,17 +43,22 @@ test/            e2e- и интеграционные спеки, global-setup.t
 
 ## Эндпоинты
 
-| Метод  | Путь                    | Описание                                                                                             |
-| ------ | ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| `POST` | `/api/auth/login`       | `{ email, password }` → `{ accessToken, user }`; 401 при неверных данных, 400 при невалидном теле    |
-| `POST` | `/api/auth/register`    | `{ email, password }` → 201 и `{ accessToken, user }`; 409 если email занят, 400 при невалидном теле |
-| `GET`  | `/api/auth/me`          | текущий пользователь по `Authorization: Bearer <jwt>`                                                |
-| `GET`  | `/api/meetings?limit=3` | `{ items, total }` — встречи текущего пользователя, новые первыми                                    |
+| Метод  | Путь                    | Описание                                                                                                                   |
+| ------ | ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/auth/login`       | `{ email, password }` → `{ accessToken, user }`; 401 при неверных данных, 400 при невалидном теле                          |
+| `POST` | `/api/auth/register`    | `{ email, password }` → 201 и `{ accessToken, user }`; 409 если email занят, 400 при невалидном теле                       |
+| `GET`  | `/api/auth/me`          | текущий пользователь по `Authorization: Bearer <jwt>`                                                                      |
+| `POST` | `/api/meetings`         | `{ title, date, participants: string[], durationMinutes? }` → 201 и встреча; владелец — из токена; 400 при невалидном теле |
+| `GET`  | `/api/meetings?limit=N` | `{ items, total }` — встречи текущего пользователя, новые первыми; без `limit` — все, с ним — от 1 до 50                   |
+| `GET`  | `/api/meetings/:id`     | встреча текущего пользователя; 404 и для несуществующей, и для чужой                                                       |
 
 ## Правила, которые легко нарушить
 
 - **Доступ к БД — только через сервисы.** `PrismaService` инжектится в `UsersService` / `MeetingsService` и никуда больше. Не тяни его в контроллеры, гарды и DTO: граница хранилища проходит по сервисам, и она уже один раз окупилась при переезде с памяти на Postgres.
 - **`PublicUser` — явный `Pick`, а не `Omit` от строки таблицы.** Добавишь колонку в модель `User` — она не утечёт в ответ API молча. Именно `Omit` пропустил `createdAt` наружу при миграции.
+- **Чужая встреча — 404, а не 403.** `MeetingsService.findOneByUser` ищет по паре `id` + `ownerId`: ответ не должен выдавать, что такой id существует. Любой новый эндпоинт по `:id` фильтрует по владельцу так же.
+- **Вход — `date`, выход — `startsAt`.** `CreateMeetingDto.date` маппится в колонку `startsAt` в контроллере; ответ и остальные эндпоинты по-прежнему отдают `startsAt`.
+- **Участники — `String[]` email-адресов** в колонке `Meeting.participants`, а не связь с `User`: приглашённый не обязан быть зарегистрирован. Сервис приводит их к нижнему регистру и убирает дубли.
 - **`startsAt` в БД — `DateTime`, в ответе — ISO-строка.** `MeetingsService` маппит явно (`toMeeting`). Не возвращай строку таблицы из сервиса как есть: тип `Meeting` объявляет `startsAt: string`, и фронт на это опирается.
 - **Сид не запускается при старте приложения** — только командой `db:seed`. Не возвращай засеивание в `onModuleInit`: на настоящей БД оно выполнялось бы при каждом `pnpm dev:api`.
 - **Дубль email ловится дважды**: проверкой в `UsersService.create` (даёт понятный 409) и уникальным индексом (`P2002` → тот же `ConflictException`). Убирать вторую защиту нельзя — между проверкой и вставкой есть гонка.

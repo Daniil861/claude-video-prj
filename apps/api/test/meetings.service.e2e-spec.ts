@@ -24,7 +24,7 @@ describe('MeetingsService (integration)', () => {
   };
 
   const add = (owner: string, title: string, startsAt: string) =>
-    service.create({ ownerId: owner, title, startsAt, durationMinutes: 30 });
+    service.create({ ownerId: owner, title, startsAt, durationMinutes: 30, participants: [] });
 
   beforeAll(async () => {
     prisma = new PrismaService();

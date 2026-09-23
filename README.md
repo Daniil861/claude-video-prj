@@ -23,7 +23,9 @@ packages/
 | `POST /api/auth/login`            | `{ email, password }` → `{ accessToken, user }`, 401 при неверных данных                              |
 | `POST /api/auth/register`         | `{ email, password }` → 201 и то же тело; 409, если email занят. `name` — локальная часть email       |
 | `GET /api/auth/me`                | Текущий пользователь по Bearer-токену                                                                 |
-| `GET /api/meetings?limit=3`       | `{ items, total }` — встречи текущего пользователя                                                    |
+| `POST /api/meetings`              | `{ title, date, participants, durationMinutes? }` → 201 и встреча; 400 при невалидном теле            |
+| `GET /api/meetings?limit=N`       | `{ items, total }` — встречи текущего пользователя, новые первыми; без `limit` — все                  |
+| `GET /api/meetings/:id`           | Одна встреча текущего пользователя; 404, если её нет или она чужая                                    |
 
 Данные хранятся в Postgres через Prisma и переживают перезапуск API. Сид больше не накатывается при старте приложения — это отдельная команда `db:seed`.
 

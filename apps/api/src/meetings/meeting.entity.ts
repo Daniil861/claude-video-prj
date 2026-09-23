@@ -5,6 +5,8 @@ export interface Meeting {
   /** Scheduled start, ISO 8601 string. */
   startsAt: string;
   durationMinutes: number;
+  /** Invitee emails, lowercased and unique. Visible to the owner only. */
+  participants: string[];
 }
 
 export interface CreateMeetingInput {
@@ -12,6 +14,7 @@ export interface CreateMeetingInput {
   title: string;
   startsAt: string;
   durationMinutes: number;
+  participants: string[];
 }
 
 export interface MeetingsPage {

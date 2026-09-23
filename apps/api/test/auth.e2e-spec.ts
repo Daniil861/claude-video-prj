@@ -3,7 +3,6 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
-import type { MeetingsPage } from './../src/meetings/meeting.entity';
 import type { PublicUser } from './../src/users/user.entity';
 
 const CREDENTIALS = { email: 'demo@example.com', password: 'password123' };
@@ -14,7 +13,7 @@ interface LoginBody {
   user: PublicUser;
 }
 
-describe('Auth and meetings (e2e)', () => {
+describe('Auth (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeAll(async () => {
@@ -184,43 +183,6 @@ describe('Auth and meetings (e2e)', () => {
         .get('/api/auth/me')
         .set('Authorization', 'Bearer not-a-jwt')
         .expect(401);
-    });
-  });
-
-  describe('GET /api/meetings', () => {
-    const getMeetings = async (token: string, query = ''): Promise<MeetingsPage> => {
-      const response = await request(app.getHttpServer())
-        .get(`/api/meetings${query}`)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      return response.body as MeetingsPage;
-    };
-
-    it('returns the three most recent meetings plus the full total', async () => {
-      const { accessToken } = await loginAsDemoUser();
-
-      const page = await getMeetings(accessToken);
-
-      expect(page.total).toBe(4);
-      expect(page.items.map((meeting) => meeting.title)).toEqual([
-        'Weekly sync',
-        'Product review',
-        'Design handoff',
-      ]);
-    });
-
-    it('honours the limit query parameter', async () => {
-      const { accessToken } = await loginAsDemoUser();
-
-      const page = await getMeetings(accessToken, '?limit=1');
-
-      expect(page.items).toHaveLength(1);
-      expect(page.total).toBe(4);
-    });
-
-    it('returns 401 without a token', async () => {
-      await request(app.getHttpServer()).get('/api/meetings').expect(401);
     });
   });
 });
