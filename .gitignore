@@ -16,6 +16,9 @@ next-env.d.ts
 .eslintcache
 coverage/
 
+# Playwright MCP output (screenshots, page snapshots, console logs)
+.playwright-mcp/
+
 # env
 .env
 .env.local
