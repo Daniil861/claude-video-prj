@@ -77,7 +77,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 pnpm --filter @video-meetings/api test:e2e
 ```
 
-Ожидаемо: 8 unit- и 47 e2e-тестов проходят, lint и typecheck чистые. E2E требуют поднятого Postgres и работают с отдельной БД `video_meetings_test`.
+Ожидаемо: 10 unit- и 47 e2e-тестов проходят, lint и typecheck чистые. E2E требуют поднятого Postgres и работают с отдельной БД `video_meetings_test`.
 
 ## Окружение
 
@@ -111,6 +111,7 @@ pnpm --filter @video-meetings/api test:e2e
 | JWT в httpOnly cookie, а не localStorage                 | Токен недоступен браузерному JS; главная — server component                                                                          |
 | Server Actions вместо route handlers в Next              | Меньше слоёв: нет промежуточного `/api/...` в Next                                                                                   |
 | Свой `JwtAuthGuard` вместо passport-jwt                  | ~20 строк вместо трёх зависимостей и стратегий                                                                                       |
+| auth ↔ users только через CQRS (`@nestjs/cqrs`)          | auth не знает внутренностей users: шлёт команды и запросы через шины, `UsersService` наружу не экспортируется                        |
 | Middleware проверяет подпись и срок, а не наличие cookie | Иначе просроченный токен зацикливает редиректы                                                                                       |
 | Тесты только на API                                      | Фронт проверяется вручную/браузером                                                                                                  |
 

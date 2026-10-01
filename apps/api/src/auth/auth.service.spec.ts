@@ -1,8 +1,11 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { hash } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import { AuthService } from './auth.service';
-import type { UsersService } from '../users/users.service';
+import { CreateUserCommand } from '../users/commands/create-user.command';
+import { FindUserByEmailQuery } from '../users/queries/find-user-by-email.query';
+import { FindUserByIdQuery } from '../users/queries/find-user-by-id.query';
+import type { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { User } from '../users/user.entity';
 
 describe('AuthService', () => {
@@ -10,6 +13,7 @@ describe('AuthService', () => {
   let user: User;
   let service: AuthService;
   let jwtService: JwtService;
+  let createdCommands: CreateUserCommand[];
 
   beforeAll(async () => {
     user = {
@@ -22,14 +26,38 @@ describe('AuthService', () => {
   });
 
   beforeEach(() => {
-    const usersService = {
-      findByEmail: (email: string) =>
-        Promise.resolve(email.toLowerCase() === user.email ? user : null),
-      findById: (id: string) => Promise.resolve(id === user.id ? user : null),
-    } as unknown as UsersService;
+    createdCommands = [];
+
+    // Stand-ins for the users module: AuthService only talks to it through the buses.
+    const queryBus = {
+      execute: (query: unknown) => {
+        if (query instanceof FindUserByEmailQuery) {
+          return Promise.resolve(query.email.toLowerCase() === user.email ? user : null);
+        }
+        if (query instanceof FindUserByIdQuery) {
+          return Promise.resolve(query.id === user.id ? user : null);
+        }
+        return Promise.reject(new Error('Unexpected query'));
+      },
+    } as unknown as QueryBus;
+
+    const commandBus = {
+      execute: (command: unknown) => {
+        if (command instanceof CreateUserCommand) {
+          createdCommands.push(command);
+          return Promise.resolve({
+            ...user,
+            id: 'usr_new',
+            email: command.email,
+            passwordHash: command.passwordHash,
+          });
+        }
+        return Promise.reject(new Error('Unexpected command'));
+      },
+    } as unknown as CommandBus;
 
     jwtService = new JwtService({ secret: 'test-secret', signOptions: { expiresIn: '1h' } });
-    service = new AuthService(usersService, jwtService);
+    service = new AuthService(commandBus, queryBus, jwtService);
   });
 
   describe('login', () => {
@@ -63,6 +91,25 @@ describe('AuthService', () => {
       await expect(service.login('nobody@example.com', password)).rejects.toThrow(
         UnauthorizedException,
       );
+    });
+  });
+
+  describe('register', () => {
+    it('sends a bcrypt hash to the users module, never the plain password', async () => {
+      await service.register('new@example.com', password);
+
+      expect(createdCommands).toHaveLength(1);
+      const [command] = createdCommands;
+      expect(command?.email).toBe('new@example.com');
+      expect(command?.passwordHash).not.toBe(password);
+      await expect(compare(password, command?.passwordHash ?? '')).resolves.toBe(true);
+    });
+
+    it('returns a token for the created user', async () => {
+      const result = await service.register('new@example.com', password);
+
+      expect(result.user).toEqual({ id: 'usr_new', email: 'new@example.com', name: user.name });
+      expect(jwtService.verify(result.accessToken)).toMatchObject({ sub: 'usr_new' });
     });
   });
 

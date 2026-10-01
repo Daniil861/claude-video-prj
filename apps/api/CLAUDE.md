@@ -15,7 +15,7 @@ pnpm --filter @video-meetings/api lint
 pnpm --filter @video-meetings/api typecheck
 ```
 
-Ожидаемо: 8 unit- и 47 e2e-тестов проходят. E2E требуют поднятого Postgres — они работают с отдельной БД `video_meetings_test` из `.env.test` и сами накатывают на неё миграции и сид.
+Ожидаемо: 10 unit- и 47 e2e-тестов проходят. E2E требуют поднятого Postgres — они работают с отдельной БД `video_meetings_test` из `.env.test` и сами накатывают на неё миграции и сид.
 
 ```bash
 pnpm --filter @video-meetings/api db:migrate   # создать и накатить миграцию по изменениям схемы
@@ -28,12 +28,14 @@ pnpm --filter @video-meetings/api db:reset     # снести и накатит�
 ```
 src/
   main.ts        bootstrap: CORS, префикс /api, глобальный ValidationPipe
-  app.module.ts  ConfigModule (isGlobal) + AuthModule + MeetingsModule
+  app.module.ts  ConfigModule (isGlobal) + CqrsModule.forRoot() + UsersModule + AuthModule + MeetingsModule
   auth/          auth.service.ts, auth.controller.ts, jwt-auth.guard.ts,
                  current-user.decorator.ts, jwt-payload.interface.ts,
                  dto/login.dto.ts, dto/register.dto.ts
   prisma/        prisma.service.ts (PrismaClient + driver adapter), prisma.module.ts (@Global)
-  users/         users.service.ts, user.entity.ts
+  users/         users.service.ts, user.entity.ts, users.module.ts (ничего не экспортирует),
+                 commands/create-user.{command,handler}.ts,
+                 queries/find-user-by-{email,id}.{query,handler}.ts
   meetings/      meetings.service.ts, meetings.controller.ts, meeting.entity.ts,
                  dto/create-meeting.dto.ts
 prisma/          schema.prisma, migrations/, seed.ts, seed-data.ts
@@ -54,6 +56,9 @@ test/            e2e- и интеграционные спеки, global-setup.t
 
 ## Правила, которые легко нарушить
 
+- **auth и users общаются только через CQRS.** `AuthService` получает `CommandBus`/`QueryBus` и шлёт `CreateUserCommand`, `FindUserByEmailQuery`, `FindUserByIdQuery`; `UsersModule` регистрирует обработчики и **ничего не экспортирует**. Не инжектируй `UsersService` вне модуля users и не импортируй `UsersModule` в другие модули — нужна новая операция над пользователями, заводи команду или запрос в `users/commands` / `users/queries`. Классы команд/запросов типизированы результатом (`Command<User>`, `Query<User | null>`), `execute` возвращает нужный тип без `as`. Шины глобальные — `CqrsModule.forRoot()` в `AppModule`.
+- **Пароль хэширует auth, users хранит готовый хэш.** `CreateUserCommand` несёт `passwordHash`, а не пароль; `bcrypt` (`hash`/`compare`) — только в `AuthService` и в сиде.
+- **`@nestjs/cqrs` — мажор 11, а не 12.** 12-я требует Nest 12 и поставляется как ESM, что ломает CommonJS-сборку и Jest. Бампать вместе с Nest.
 - **Доступ к БД — только через сервисы.** `PrismaService` инжектится в `UsersService` / `MeetingsService` и никуда больше. Не тяни его в контроллеры, гарды и DTO: граница хранилища проходит по сервисам, и она уже один раз окупилась при переезде с памяти на Postgres.
 - **`PublicUser` — явный `Pick`, а не `Omit` от строки таблицы.** Добавишь колонку в модель `User` — она не утечёт в ответ API молча. Именно `Omit` пропустил `createdAt` наружу при миграции.
 - **Чужая встреча — 404, а не 403.** `MeetingsService.findOneByUser` ищет по паре `id` + `ownerId`: ответ не должен выдавать, что такой id существует. Любой новый эндпоинт по `:id` фильтрует по владельцу так же.
@@ -61,7 +66,7 @@ test/            e2e- и интеграционные спеки, global-setup.t
 - **Участники — `String[]` email-адресов** в колонке `Meeting.participants`, а не связь с `User`: приглашённый не обязан быть зарегистрирован. Сервис приводит их к нижнему регистру и убирает дубли.
 - **`startsAt` в БД — `DateTime`, в ответе — ISO-строка.** `MeetingsService` маппит явно (`toMeeting`). Не возвращай строку таблицы из сервиса как есть: тип `Meeting` объявляет `startsAt: string`, и фронт на это опирается.
 - **Сид не запускается при старте приложения** — только командой `db:seed`. Не возвращай засеивание в `onModuleInit`: на настоящей БД оно выполнялось бы при каждом `pnpm dev:api`.
-- **Дубль email ловится дважды**: проверкой в `UsersService.create` (даёт понятный 409) и уникальным индексом (`P2002` → тот же `ConflictException`). Убирать вторую защиту нельзя — между проверкой и вставкой есть гонка.
+- **Дубль email ловится дважды**: проверкой в `UsersService.create` (даёт понятный 409) и уникальным индексом (`P2002` → тот же `ConflictException`). Убирать вторую защиту нельзя — между проверкой и вставкой есть гонка. `ConflictException` проходит через `CommandBus` как есть и превращается в 409.
 - **Меняешь `schema.prisma` — создавай миграцию** (`db:migrate`), а не правь БД руками. Prisma Client перегенерируется в `postinstall` и в `db:generate`.
 - **Аутентификация — свой `JwtAuthGuard`, без passport.** Он валидирует `Authorization: Bearer <jwt>` и кладёт payload в `request.user`; читать payload только через `@CurrentUser()`, не лазить в `request` напрямую.
 - Guard вешается на контроллер целиком (`@UseGuards(JwtAuthGuard)` на классе `MeetingsController`) или на метод (`/auth/me`). `AuthModule` экспортирует `JwtAuthGuard` и `JwtModule` — другие модули импортируют `AuthModule`, чтобы получить guard.

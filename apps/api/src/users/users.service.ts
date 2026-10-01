@@ -1,21 +1,23 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { hash } from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import type { User } from './user.entity';
 
-const BCRYPT_ROUNDS = 10;
 const UNIQUE_CONSTRAINT_FAILED = 'P2002';
 
-/** Users are stored in Postgres; consumers only depend on the methods below. */
+/**
+ * Users are stored in Postgres. Only the users module's command and query
+ * handlers call this service; other modules go through the CQRS buses.
+ */
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Registers a new user. The name is derived from the local part of the email,
-   * since registration only asks for credentials.
+   * since registration only asks for credentials. The password must already be
+   * hashed by the caller.
    */
-  async create(email: string, password: string): Promise<User> {
+  async create(email: string, passwordHash: string): Promise<User> {
     const normalized = normalizeEmail(email);
 
     if (await this.findByEmail(normalized)) {
@@ -27,7 +29,7 @@ export class UsersService {
         data: {
           email: normalized,
           name: localPartOf(normalized),
-          passwordHash: await hash(password, BCRYPT_ROUNDS),
+          passwordHash,
         },
       });
     } catch (error) {
