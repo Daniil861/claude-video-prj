@@ -7,7 +7,10 @@ import { clearSessionCookie, setSessionCookie } from '@/lib/session';
 import type { User } from '@/lib/types';
 
 export interface LoginState {
+  /** Form-level error: wrong credentials or an API failure. */
   error?: string;
+  /** Per-field validation messages, shown under the matching input. */
+  fieldErrors?: Partial<Record<'email' | 'password', string>>;
   /** Field values kept so the form does not reset after a failed attempt. */
   email?: string;
 }
@@ -27,7 +30,11 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
   const parsed = loginSchema.safeParse({ email, password: String(formData.get('password') ?? '') });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'Проверьте введённые данные', email };
+    const { fieldErrors } = z.flattenError(parsed.error);
+    return {
+      fieldErrors: { email: fieldErrors.email?.[0], password: fieldErrors.password?.[0] },
+      email,
+    };
   }
 
   try {

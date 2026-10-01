@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { Card } from '@heroui/react';
 import { LoginForm } from '@/features/auth/login-form';
 import styles from './page.module.css';
 
@@ -10,16 +11,22 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <main className={styles.main}>
-      <section className={styles.card}>
-        <h1 className={styles.heading}>Вход</h1>
-        <p className={styles.subheading}>Войдите, чтобы управлять встречами</p>
+      <Card className={styles.card}>
+        <Card.Header>
+          <h1 className={styles.heading}>Вход</h1>
+          <Card.Description>Войдите, чтобы управлять встречами</Card.Description>
+        </Card.Header>
 
-        <LoginForm />
+        <Card.Content>
+          <LoginForm />
+        </Card.Content>
 
-        <p className={styles.footer}>
-          Нет аккаунта? <Link href="/auth/register">Зарегистрироваться</Link>
-        </p>
-      </section>
+        <Card.Footer className={styles.footer}>
+          <span>
+            Нет аккаунта? <Link href="/auth/register">Зарегистрироваться</Link>
+          </span>
+        </Card.Footer>
+      </Card>
     </main>
   );
 }

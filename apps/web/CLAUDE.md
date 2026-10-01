@@ -56,8 +56,11 @@ src/
 
 1. `loginAction` (`features/auth/actions.ts`): zod-валидация → `POST /auth/login` в Nest → `setSessionCookie(accessToken)` → `redirect('/')`.
 2. Cookie `access_token`: `httpOnly`, `sameSite: 'lax'`, `secure` в production, `maxAge` = остаток жизни JWT.
-3. Ошибки формы возвращаются через `useActionState`; `email` сохраняется в стейте, чтобы форма не сбрасывалась.
-4. `src/middleware.ts` проверяет **подпись и срок** токена через `jose` (не просто наличие cookie) и удаляет недействительную cookie. Матчер: `/`, `/meetings/*`, `/auth/login`, `/auth/register`. При добавлении защищённого маршрута — добавь его в `config.matcher`.
+3. Ошибки формы возвращаются через `useActionState`: `fieldErrors` (zod, по полям — под инпутом через `FieldError`) и `error` (неверные данные, сбой API — `Alert`). `email` сохраняется в стейте, чтобы форма не сбрасывалась.
+4. **Форма на HeroUI (`Form` + `TextField`) — две ловушки:**
+   - `validationBehavior="aria"`: валидирует только server action, браузер не блокирует отправку своими всплывающими подсказками (замена прежнему `noValidate`).
+   - Ошибки полей передаются через `isInvalid` у `TextField`, **а не через `validationErrors` у `Form`**: после action React 19 сбрасывает форму, а React Aria на событии `reset` стирает серверные ошибки — они мигнут и пропадут. Значение после сброса берётся из актуального `defaultValue`, поэтому `defaultValue={state.email}` работает.
+5. `src/middleware.ts` проверяет **подпись и срок** токена через `jose` (не просто наличие cookie) и удаляет недействительную cookie. Матчер: `/`, `/meetings/*`, `/auth/login`, `/auth/register`. При добавлении защищённого маршрута — добавь его в `config.matcher`.
 
 ## Работа с API
 
