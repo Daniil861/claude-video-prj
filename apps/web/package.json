@@ -13,6 +13,8 @@
     "clean": "rimraf .next out node_modules"
   },
   "dependencies": {
+    "@heroui/react": "^3.2.6",
+    "@heroui/styles": "^3.2.6",
     "jose": "^6.2.9",
     "next": "16.3.1",
     "react": "19.2.8",
@@ -20,14 +22,17 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24.9.2",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@video-meetings/eslint-config": "workspace:*",
     "@video-meetings/typescript-config": "workspace:*",
     "eslint": "^9.39.1",
+    "postcss": "^8.5.28",
     "prettier": "^3.6.2",
     "rimraf": "^6.0.1",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3"
   }
 }

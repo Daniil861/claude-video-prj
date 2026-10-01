@@ -64,6 +64,6 @@
 .error {
   padding: 0.7rem 0.9rem;
   border-radius: var(--radius);
-  background: var(--danger-surface);
+  background: var(--danger-soft);
   color: var(--danger);
 }

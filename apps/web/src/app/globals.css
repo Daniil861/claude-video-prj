@@ -1,39 +1,25 @@
+/* Tailwind v4 must come first, HeroUI styles right after it. */
+@import 'tailwindcss';
+@import '@heroui/styles';
+
+/*
+ * Theme tokens come from HeroUI (--background, --surface, --foreground, --muted, --border,
+ * --accent, --accent-hover, --danger, --danger-soft, --radius), and the CSS modules use the same names.
+ * HeroUI declares them inside @layer, so the unlayered overrides below win.
+ * Dark tokens apply via the `dark` class that the script in layout.tsx sets on <html>.
+ */
 :root {
-  --background: #f6f7f9;
-  --surface: #ffffff;
-  --foreground: #171717;
-  --muted: #5f6673;
-  --border: #e2e5ea;
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
-  --danger: #b42318;
-  --danger-surface: #fef3f2;
-  --radius: 10px;
+  --accent: oklch(0.511 0.23 276.97);
+  --radius: 0.625rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b0c0f;
-    --surface: #14161a;
-    --foreground: #ededed;
-    --muted: #9aa1ad;
-    --border: #262a31;
-    --accent: #7c74f2;
-    --accent-hover: #8e88f5;
-    --danger: #ff8f85;
-    --danger-surface: #2a1615;
-  }
-}
-
-* {
-  box-sizing: border-box;
+.dark {
+  --accent: oklch(0.645 0.17 280.5);
 }
 
 html,
 body {
   max-width: 100vw;
-  margin: 0;
-  padding: 0;
   overflow-x: hidden;
 }
 
@@ -49,6 +35,13 @@ body {
   line-height: 1.5;
 }
 
+/* Tailwind preflight resets heading weights to inherit. */
+h1,
+h2,
+h3 {
+  font-weight: 600;
+}
+
 a {
   color: var(--accent);
   text-decoration: none;
@@ -56,8 +49,4 @@ a {
 
 a:hover {
   text-decoration: underline;
-}
-
-button {
-  font: inherit;
 }

@@ -1,6 +1,6 @@
 # CLAUDE.md — apps/web
 
-Next.js 16.3.1, App Router, React 19, TypeScript. Порт 3000. Пакет `@video-meetings/web`.
+Next.js 16.3.1, App Router, React 19, TypeScript, HeroUI v3 + Tailwind CSS v4. Порт 3000. Пакет `@video-meetings/web`.
 Общие правила монорепозитория — в [корневом CLAUDE.md](../../CLAUDE.md).
 
 > **Меняешь архитектуру — обновляй документацию в том же коммите.** Новый маршрут, изменившийся контракт с API, смена подхода к сессии или новая зависимость → правь этот файл, `README.md` и `PROGRESS.md`. Критерии и таблица «что куда» — в разделе «Актуализация документации» корневого CLAUDE.md.
@@ -42,7 +42,12 @@ src/
 
 - **`src/lib/api.ts` — только для сервера.** Не импортировать из клиентских компонентов: токен не должен попадать в браузер. Все запросы к Nest уходят с сервера.
 - **`src/lib/session.ts` использует `next/headers`** — тоже только server components / server actions. `auth-cookie.ts` намеренно отделён, потому что его использует edge-middleware.
-- **Никакого Tailwind** — обычные CSS-модули (`*.module.css`) рядом с компонентом, плюс `src/app/globals.css`.
+- **UI-компоненты — HeroUI v3** (`@heroui/react`), раскладка и всё своё — CSS-модули (`*.module.css`) рядом с компонентом. Tailwind v4 подключён, потому что на нём стоит HeroUI; утилитарные классы в разметке не используем — иначе в проекте будет два способа стилизации одного и того же.
+- **HeroUI — только v3.** Без `HeroUIProvider`, без `framer-motion`, компоненты составные (`Card.Header`), обработчик — `onPress`, а не `onClick`. Документация v3 — через скилл `heroui-react` (`.claude/skills/heroui-react`); знания про v2 не применять.
+- **Порядок импортов в `globals.css` важен:** сначала `tailwindcss`, потом `@heroui/styles`. PostCSS-плагин — `@tailwindcss/postcss` (`postcss.config.mjs`).
+- **Токены темы — от HeroUI.** `--background`, `--surface`, `--foreground`, `--muted`, `--border`, `--accent`, `--accent-hover`, `--danger`, `--danger-soft`, `--radius` объявляет HeroUI, CSS-модули пользуются ими же. Свои значения (фирменный `--accent`, `--radius`) переопределяются в `globals.css` вне `@layer` — так они перекрывают слой темы. Не заводи токен с тем же именем, но другим смыслом.
+- **Тёмная тема — по классу `dark` на `<html>`**, а не по `prefers-color-scheme`: так HeroUI переключает свои токены. Класс ставит inline-скрипт в `layout.tsx` по системной настройке до первой отрисовки (отсюда `suppressHydrationWarning` на `<html>`).
+- **Компоненты HeroUI уже помечены `'use client'`** внутри пакета — их можно рендерить из server components (см. `features/auth/logout-button.tsx`).
 - **Server Actions, а не route handlers.** В `src/app` нет и не должно быть `api/`-маршрутов Next: формы вызывают server actions напрямую.
 - **`redirect()` бросает исключение** — вызывать его вне `try/catch`, иначе редирект будет проглочен (см. конец `loginAction`).
 - **UI-тексты — на русском.** Ошибки пользователю формулируются в actions/queries, а не пробрасываются сырыми.

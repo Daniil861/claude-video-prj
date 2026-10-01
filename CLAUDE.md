@@ -44,7 +44,7 @@
 
 ```
 apps/
-  web/                Next.js 16, App Router  — http://localhost:3000       (см. apps/web/CLAUDE.md)
+  web/                Next.js 16, App Router, HeroUI v3 — http://localhost:3000   (см. apps/web/CLAUDE.md)
   api/                Nest.js 11              — http://localhost:3001/api   (см. apps/api/CLAUDE.md)
 packages/
   eslint-config/      flat-конфиги: base / next / nest
