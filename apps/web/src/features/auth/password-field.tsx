@@ -9,9 +9,10 @@ interface PasswordFieldProps {
   name: string;
   label: string;
   autoComplete: 'current-password' | 'new-password';
+  value: string;
   error?: string;
-  value?: string;
-  onChange?: (value: string) => void;
+  onChange: (value: string) => void;
+  onBlur: () => void;
   /** Rendered under the input while there is no error, e.g. a strength meter. */
   children?: ReactNode;
 }
@@ -20,9 +21,10 @@ export function PasswordField({
   name,
   label,
   autoComplete,
-  error,
   value,
+  error,
   onChange,
+  onBlur,
   children,
 }: PasswordFieldProps) {
   const [isVisible, setIsVisible] = useState(false);
@@ -34,18 +36,20 @@ export function PasswordField({
       autoComplete={autoComplete}
       value={value}
       onChange={onChange}
+      onBlur={onBlur}
       isRequired
       isInvalid={Boolean(error)}
       fullWidth
     >
       <Label>{label}</Label>
-      <InputGroup fullWidth>
+      <InputGroup variant="secondary" fullWidth>
         <InputGroup.Prefix>
           <Lock className={styles.icon} aria-hidden />
         </InputGroup.Prefix>
         <InputGroup.Input />
         <InputGroup.Suffix className={styles.toggleSuffix}>
           <Button
+            className={styles.toggle}
             isIconOnly
             size="sm"
             variant="ghost"
@@ -56,7 +60,7 @@ export function PasswordField({
           </Button>
         </InputGroup.Suffix>
       </InputGroup>
-      {error ? <FieldError>{error}</FieldError> : children}
+      {error ? <FieldError className={styles.error}>{error}</FieldError> : children}
     </TextField>
   );
 }

@@ -13,7 +13,9 @@ export default function LoginPage() {
     <Card className={styles.card}>
       <Card.Header className={styles.header}>
         <h1 className={styles.heading}>Вход</h1>
-        <Card.Description>Войдите, чтобы управлять встречами</Card.Description>
+        <Card.Description className={styles.description}>
+          Войдите, чтобы управлять встречами
+        </Card.Description>
       </Card.Header>
 
       <Card.Content>

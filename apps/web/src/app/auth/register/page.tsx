@@ -13,7 +13,9 @@ export default function RegisterPage() {
     <Card className={styles.card}>
       <Card.Header className={styles.header}>
         <h1 className={styles.heading}>Создайте аккаунт</h1>
-        <Card.Description>Планируйте встречи и приглашайте участников по email</Card.Description>
+        <Card.Description className={styles.description}>
+          Планируйте встречи и приглашайте участников по email
+        </Card.Description>
       </Card.Header>
 
       <Card.Content>

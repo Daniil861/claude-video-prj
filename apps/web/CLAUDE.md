@@ -27,8 +27,10 @@ src/
     auth/register/        /auth/register
     meetings/new/         заглушка
   features/     фичевые модули: server actions, client-компоненты, запросы
-    auth/       actions.ts (loginAction/registerAction/logoutAction), login-form.tsx, register-form.tsx,
-                password-field.tsx (пароль с показом/скрытием), password-strength.tsx, logout-button.tsx
+    auth/       actions.ts (loginAction/registerAction/logoutAction), schemas.ts (zod-правила для action и формы),
+                use-auth-form.ts (состояние и отправка формы), login-form.tsx, register-form.tsx,
+                email-field.tsx, password-field.tsx (пароль с показом/скрытием), password-strength.tsx,
+                form-alert.tsx, logout-button.tsx
     meetings/   queries.ts (loadDashboard), meeting-list.tsx
   lib/          инфраструктура
     api.ts          серверный fetch-клиент к Nest + класс ApiError
@@ -57,12 +59,17 @@ src/
 
 ## Аутентификация
 
-1. `loginAction` / `registerAction` (`features/auth/actions.ts`): zod-валидация → `POST /auth/login` или `/auth/register` в Nest → `setSessionCookie(accessToken)` → `redirect('/')`. Общая часть — `startSession()`. Схема `credentialsSchema` повторяет `LoginDto`/`RegisterDto` API: при изменении правил на API править и её. `confirmPassword` проверяется только в action и в API не уходит; 409 от API превращается в ошибку поля email.
+1. `loginAction` / `registerAction` (`features/auth/actions.ts`): валидация → `POST /auth/login` или `/auth/register` в Nest → `setSessionCookie(accessToken)` → `redirect('/')`. Общая часть — `startSession()`. Правила и тексты ошибок — в `features/auth/schemas.ts` (`credentialsSchema`, `registerSchema`, `validateLogin`/`validateRegister`); они повторяют `LoginDto`/`RegisterDto` API: при изменении правил на API править их. Модуль без `'use server'` — его импортирует и клиентская форма. `confirmPassword` проверяется только в Next и в API не уходит; 409 от API превращается в ошибку поля email.
 2. Cookie `access_token`: `httpOnly`, `sameSite: 'lax'`, `secure` в production, `maxAge` = остаток жизни JWT.
-3. Ошибки формы возвращаются через `useActionState`: `fieldErrors` (zod, по полям — под инпутом через `FieldError`) и `error` (неверные данные, сбой API — `Alert`). `email` сохраняется в стейте, чтобы форма не сбрасывалась.
-4. **Форма на HeroUI (`Form` + `TextField`) — две ловушки:**
-   - `validationBehavior="aria"`: валидирует только server action, браузер не блокирует отправку своими всплывающими подсказками (замена прежнему `noValidate`).
-   - Ошибки полей передаются через `isInvalid` у `TextField`, **а не через `validationErrors` у `Form`**: после action React 19 сбрасывает форму, а React Aria на событии `reset` стирает серверные ошибки — они мигнут и пропадут. Значение после сброса берётся из актуального `defaultValue`, поэтому `defaultValue={state.email}` работает.
+3. **Состояние формы — хук `useAuthForm`** (`features/auth/use-auth-form.ts`), общий для входа и регистрации:
+   - значения полей контролируемые; клиент проверяет их теми же функциями из `schemas.ts`, что и action. Ошибка поля показывается после ухода с непустого поля или после попытки отправки и затем пересчитывается на каждый ввод — исправил поле, ошибка ушла;
+   - серверные ошибки из `useActionState` (`fieldErrors` — под полем, `error` — в `FormAlert`) показываются, пока значение поля не изменилось с момента отправки;
+   - при ошибках клиент не отправляет форму, а после ответа сервера фокус переходит на первое поле с `aria-invalid` — так ошибку услышит и скринридер (текст связан через `aria-describedby`).
+4. **Форма на HeroUI (`Form` + `TextField`) — ловушки:**
+   - **Отправка — через `onSubmit` + `startTransition(formAction)`, а `action={formAction}` оставлен только как фолбэк.** Если отдать action в `<form action>` напрямую, React 19 сбрасывает форму после каждого вызова — пароли стирались бы при любой ошибке. React не вызывает `action`, когда `onSubmit` сделал `preventDefault`; до гидратации же форма уйдёт POST в server action. Без `action` она ушла бы GET-запросом — с паролем в URL.
+   - `validationBehavior="aria"`: браузер не блокирует отправку своими всплывающими подсказками, ошибки показывает `useAuthForm`.
+   - Ошибки полей передаются через `isInvalid` у `TextField` (а не `validationErrors` у `Form`): ошибка — сумма клиентской и серверной, её считает хук.
+   - Поля внутри `Card` — `InputGroup variant="secondary"`: у `primary` фон совпадает с фоном карточки и рамки нет, в тёмной теме поле не видно.
 5. `src/middleware.ts` проверяет **подпись и срок** токена через `jose` (не просто наличие cookie) и удаляет недействительную cookie. Матчер: `/`, `/meetings/*`, `/auth/login`, `/auth/register`. При добавлении защищённого маршрута — добавь его в `config.matcher`.
 
 ## Работа с API

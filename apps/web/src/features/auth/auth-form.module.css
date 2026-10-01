@@ -14,6 +14,23 @@
   padding-inline-end: 0;
 }
 
+/* Extend the hit area by 6px on each side (44px+ for touch) without growing the field. */
+.toggle {
+  position: relative;
+}
+
+.toggle::before {
+  position: absolute;
+  inset: -6px;
+  content: '';
+}
+
+/* HeroUI pads FieldError but not Description; align them so swapping one for the other
+   does not shift the text. */
+.error {
+  padding-inline: 0;
+}
+
 .meter {
   margin-top: 0.35rem;
 }
