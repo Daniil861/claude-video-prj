@@ -33,7 +33,7 @@ pnpm --filter @video-meetings/web typecheck   # tsc --noEmit
 ```
 src/
   app/          маршруты App Router; стили — CSS-модули рядом (page.module.css)
-    page.tsx              /            главная, server component, только для авторизованных
+    page.tsx              /            главная, server component, только для авторизованных: шапка (Brand + «Выйти»), приветствие, Card со списком
     auth/layout.tsx       общий фон и логотип для /auth/*; auth-card.module.css — общая карточка
     auth/login/           /auth/login
     auth/register/        /auth/register
@@ -43,7 +43,8 @@ src/
                 use-auth-form.ts (состояние и отправка формы), login-form.tsx, register-form.tsx,
                 email-field.tsx, password-field.tsx (пароль с показом/скрытием), password-strength.tsx,
                 form-alert.tsx, logout-button.tsx
-    meetings/   queries.ts (loadDashboard), meeting-list.tsx
+    meetings/   queries.ts (loadDashboard), meeting-list.tsx (бейдж «Прошла», год только у не текущего)
+  components/   общие визуальные компоненты без логики фич: brand.tsx (логотип для /auth/* и главной)
   lib/          инфраструктура
     api.ts          серверный fetch-клиент к Nest + класс ApiError
     session.ts      чтение/запись/удаление httpOnly cookie (next/headers)
@@ -62,6 +63,8 @@ src/
 - **HeroUI — только v3.** Без `HeroUIProvider`, без `framer-motion`, компоненты составные (`Card.Header`), обработчик — `onPress`, а не `onClick`. Документация v3 — через скилл `heroui-react` (`.claude/skills/heroui-react`); знания про v2 не применять.
 - **Порядок импортов в `globals.css` важен:** сначала `tailwindcss`, потом `@heroui/styles`. PostCSS-плагин — `@tailwindcss/postcss` (`postcss.config.mjs`).
 - **Токены темы — от HeroUI.** `--background`, `--surface`, `--foreground`, `--muted`, `--border`, `--accent`, `--accent-hover`, `--danger`, `--danger-soft`, `--radius` объявляет HeroUI, CSS-модули пользуются ими же. Свои значения (фирменный `--accent`, `--radius`) переопределяются в `globals.css` вне `@layer` — так они перекрывают слой темы. Не заводи токен с тем же именем, но другим смыслом.
+- **В тёмной теме `--accent` светлый, а `--accent-foreground` — тёмный.** Белый текст на кнопке там не проходит 4.5:1. Не пиши `color: #fff` поверх `--accent` — бери `--accent-foreground` или компонент HeroUI. `--danger` в тёмной теме тоже переопределён: красный HeroUI слишком тёмный для текста ошибок.
+- **Ссылка, которая выглядит как кнопка, — `<Link className={buttonVariants({...})}>`**, а не `Button` (он рендерит `<button>`). `buttonVariants` — обычная функция, её можно вызывать в server component. Глобальные стили `a` поэтому живут в `@layer base`: вне слоя они перекрыли бы цвет кнопки HeroUI из `@layer components`.
 - **Тёмная тема — по классу `dark` на `<html>`**, а не по `prefers-color-scheme`: так HeroUI переключает свои токены. Класс ставит inline-скрипт в `layout.tsx` по системной настройке до первой отрисовки (отсюда `suppressHydrationWarning` на `<html>`).
 - **Иконки — `@gravity-ui/icons`** (их использует документация HeroUI). Декоративным иконкам — `aria-hidden`, кнопке-иконке — `aria-label`.
 - **Компоненты HeroUI уже помечены `'use client'`** внутри пакета — их можно рендерить из server components (см. `features/auth/logout-button.tsx`).

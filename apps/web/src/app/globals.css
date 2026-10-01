@@ -13,8 +13,15 @@
   --radius: 0.625rem;
 }
 
+/*
+ * The dark accent stays light so links remain readable on the dark surface; white text on it
+ * fails 4.5:1, so buttons get a dark foreground instead. HeroUI derives --accent-hover from both.
+ * HeroUI's dark --danger is too dark for error text on the card (3.97:1), hence the lighter red.
+ */
 .dark {
   --accent: oklch(0.645 0.17 280.5);
+  --accent-foreground: oklch(0.15 0.04 280);
+  --danger: oklch(0.7 0.19 24);
 }
 
 html,
@@ -42,11 +49,14 @@ h3 {
   font-weight: 600;
 }
 
-a {
-  color: var(--accent);
-  text-decoration: none;
-}
+/* In the base layer so HeroUI components win: a <Link> styled with buttonVariants keeps its colors. */
+@layer base {
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
 
-a:hover {
-  text-decoration: underline;
+  a:not(.button):hover {
+    text-decoration: underline;
+  }
 }

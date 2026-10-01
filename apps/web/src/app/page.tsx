@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
+import { Plus } from '@gravity-ui/icons';
+import { buttonVariants, Card } from '@heroui/react';
+import { Brand } from '@/components/brand';
 import { LogoutButton } from '@/features/auth/logout-button';
 import { MeetingList } from '@/features/meetings/meeting-list';
 import { loadDashboard } from '@/features/meetings/queries';
@@ -24,44 +27,58 @@ export default async function HomePage() {
     redirect('/auth/login');
   }
 
-  if (result.status === 'unavailable') {
-    return (
-      <main className={styles.main}>
-        <section className={styles.card}>
-          <h1 className={styles.heading}>Не удалось загрузить данные</h1>
-          <p className={styles.error} role="alert">
-            {result.message}
-          </p>
-          <Link className={styles.secondaryAction} href="/">
-            Попробовать снова
-          </Link>
-        </section>
-      </main>
-    );
-  }
-
-  const { user, meetings } = result;
-
   return (
-    <main className={styles.main}>
-      <header className={styles.header}>
-        <div>
-          <h1 className={styles.heading}>Привет, {user.email}</h1>
-          <p className={styles.subheading}>
-            Всего встреч: <strong>{meetings.total}</strong>
-          </p>
-        </div>
+    <div className={styles.shell}>
+      <header className={styles.topbar}>
+        <Brand />
         <LogoutButton />
       </header>
 
-      <section className={styles.card}>
-        <h2 className={styles.sectionHeading}>Последние встречи</h2>
-        <MeetingList meetings={meetings.items} />
-      </section>
+      {result.status === 'unavailable' ? (
+        <main className={styles.main}>
+          <Card className={styles.card}>
+            <Card.Header>
+              <h1 className={styles.sectionHeading}>Не удалось загрузить данные</h1>
+            </Card.Header>
+            <Card.Content className={styles.unavailable}>
+              <p className={styles.error} role="alert">
+                {result.message}
+              </p>
+              <Link className={buttonVariants({ variant: 'secondary' })} href="/">
+                Попробовать снова
+              </Link>
+            </Card.Content>
+          </Card>
+        </main>
+      ) : (
+        <main className={styles.main}>
+          <section className={styles.intro}>
+            <div>
+              <h1 className={styles.heading}>Привет, {result.user.email}</h1>
+              <p className={styles.subheading}>
+                Всего встреч: <strong>{result.meetings.total}</strong>
+              </p>
+            </div>
+            {/* A link, not a Button: it navigates. buttonVariants gives it the HeroUI look. */}
+            <Link
+              className={buttonVariants({ size: 'lg', className: styles.primaryAction })}
+              href="/meetings/new"
+            >
+              <Plus aria-hidden />
+              Создать встречу
+            </Link>
+          </section>
 
-      <Link className={styles.primaryAction} href="/meetings/new">
-        Создать встречу
-      </Link>
-    </main>
+          <Card className={styles.card}>
+            <Card.Header>
+              <h2 className={styles.sectionHeading}>Последние встречи</h2>
+            </Card.Header>
+            <Card.Content>
+              <MeetingList meetings={result.meetings.items} />
+            </Card.Content>
+          </Card>
+        </main>
+      )}
+    </div>
   );
 }
