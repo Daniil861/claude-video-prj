@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import styles from './page.module.css';
+import { Card } from '@heroui/react';
+import { RegisterForm } from '@/features/auth/register-form';
+import styles from '../auth-card.module.css';
 
 export const metadata: Metadata = {
   title: 'Регистрация — Video Meetings',
@@ -8,14 +10,21 @@ export const metadata: Metadata = {
 
 export default function RegisterPage() {
   return (
-    <main className={styles.main}>
-      <section className={styles.card}>
-        <h1 className={styles.heading}>Регистрация</h1>
-        <p className={styles.text}>Эта страница ещё в разработке.</p>
-        <Link className={styles.link} href="/auth/login">
-          ← Вернуться ко входу
-        </Link>
-      </section>
-    </main>
+    <Card className={styles.card}>
+      <Card.Header className={styles.header}>
+        <h1 className={styles.heading}>Создайте аккаунт</h1>
+        <Card.Description>Планируйте встречи и приглашайте участников по email</Card.Description>
+      </Card.Header>
+
+      <Card.Content>
+        <RegisterForm />
+      </Card.Content>
+
+      <Card.Footer className={styles.footer}>
+        <span>
+          Уже есть аккаунт? <Link href="/auth/login">Войти</Link>
+        </span>
+      </Card.Footer>
+    </Card>
   );
 }

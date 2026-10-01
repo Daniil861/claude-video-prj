@@ -3,7 +3,7 @@
 import { useActionState } from 'react';
 import { Alert, Button, FieldError, Form, Input, Label, Spinner, TextField } from '@heroui/react';
 import { loginAction, type LoginState } from './actions';
-import styles from './login-form.module.css';
+import styles from './auth-form.module.css';
 
 const INITIAL_STATE: LoginState = {};
 

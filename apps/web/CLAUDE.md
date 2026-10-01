@@ -22,11 +22,13 @@ pnpm --filter @video-meetings/web typecheck   # tsc --noEmit
 src/
   app/          маршруты App Router; стили — CSS-модули рядом (page.module.css)
     page.tsx              /            главная, server component, только для авторизованных
+    auth/layout.tsx       общий фон и логотип для /auth/*; auth-card.module.css — общая карточка
     auth/login/           /auth/login
-    auth/register/        заглушка
+    auth/register/        /auth/register
     meetings/new/         заглушка
   features/     фичевые модули: server actions, client-компоненты, запросы
-    auth/       actions.ts (loginAction/logoutAction), login-form.tsx, logout-button.tsx
+    auth/       actions.ts (loginAction/registerAction/logoutAction), login-form.tsx, register-form.tsx,
+                password-field.tsx (пароль с показом/скрытием), password-strength.tsx, logout-button.tsx
     meetings/   queries.ts (loadDashboard), meeting-list.tsx
   lib/          инфраструктура
     api.ts          серверный fetch-клиент к Nest + класс ApiError
@@ -47,6 +49,7 @@ src/
 - **Порядок импортов в `globals.css` важен:** сначала `tailwindcss`, потом `@heroui/styles`. PostCSS-плагин — `@tailwindcss/postcss` (`postcss.config.mjs`).
 - **Токены темы — от HeroUI.** `--background`, `--surface`, `--foreground`, `--muted`, `--border`, `--accent`, `--accent-hover`, `--danger`, `--danger-soft`, `--radius` объявляет HeroUI, CSS-модули пользуются ими же. Свои значения (фирменный `--accent`, `--radius`) переопределяются в `globals.css` вне `@layer` — так они перекрывают слой темы. Не заводи токен с тем же именем, но другим смыслом.
 - **Тёмная тема — по классу `dark` на `<html>`**, а не по `prefers-color-scheme`: так HeroUI переключает свои токены. Класс ставит inline-скрипт в `layout.tsx` по системной настройке до первой отрисовки (отсюда `suppressHydrationWarning` на `<html>`).
+- **Иконки — `@gravity-ui/icons`** (их использует документация HeroUI). Декоративным иконкам — `aria-hidden`, кнопке-иконке — `aria-label`.
 - **Компоненты HeroUI уже помечены `'use client'`** внутри пакета — их можно рендерить из server components (см. `features/auth/logout-button.tsx`).
 - **Server Actions, а не route handlers.** В `src/app` нет и не должно быть `api/`-маршрутов Next: формы вызывают server actions напрямую.
 - **`redirect()` бросает исключение** — вызывать его вне `try/catch`, иначе редирект будет проглочен (см. конец `loginAction`).
@@ -54,7 +57,7 @@ src/
 
 ## Аутентификация
 
-1. `loginAction` (`features/auth/actions.ts`): zod-валидация → `POST /auth/login` в Nest → `setSessionCookie(accessToken)` → `redirect('/')`.
+1. `loginAction` / `registerAction` (`features/auth/actions.ts`): zod-валидация → `POST /auth/login` или `/auth/register` в Nest → `setSessionCookie(accessToken)` → `redirect('/')`. Общая часть — `startSession()`. Схема `credentialsSchema` повторяет `LoginDto`/`RegisterDto` API: при изменении правил на API править и её. `confirmPassword` проверяется только в action и в API не уходит; 409 от API превращается в ошибку поля email.
 2. Cookie `access_token`: `httpOnly`, `sameSite: 'lax'`, `secure` в production, `maxAge` = остаток жизни JWT.
 3. Ошибки формы возвращаются через `useActionState`: `fieldErrors` (zod, по полям — под инпутом через `FieldError`) и `error` (неверные данные, сбой API — `Alert`). `email` сохраняется в стейте, чтобы форма не сбрасывалась.
 4. **Форма на HeroUI (`Form` + `TextField`) — две ловушки:**

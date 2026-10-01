@@ -1,0 +1,25 @@
+.card {
+  width: 100%;
+  padding: 2rem;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 4%),
+    0 12px 32px rgb(0 0 0 / 6%);
+}
+
+.header {
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.heading {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.footer {
+  justify-content: center;
+  margin-top: 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}

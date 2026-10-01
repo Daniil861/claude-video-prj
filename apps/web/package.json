@@ -13,6 +13,7 @@
     "clean": "rimraf .next out node_modules"
   },
   "dependencies": {
+    "@gravity-ui/icons": "^2.22.0",
     "@heroui/react": "^3.2.6",
     "@heroui/styles": "^3.2.6",
     "jose": "^6.2.9",
