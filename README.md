@@ -113,4 +113,4 @@ docker compose down
 ## Соглашения
 
 - Коммиты — Conventional Commits, проверяются commitlint через хук `commit-msg`.
-- Перед коммитом lint-staged прогоняет Prettier и ESLint по staged-файлам.
+- Хук `pre-commit` (husky): lint-staged прогоняет Prettier по staged-файлам, затем `pnpm lint` и `pnpm test` по всему репозиторию. Упал любой шаг — коммит отменяется. Обойти в крайнем случае: `git commit --no-verify`.

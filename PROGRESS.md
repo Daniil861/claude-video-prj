@@ -3,7 +3,7 @@
 Файл-хендофф: что сделано, что дальше, какие решения уже приняты и почему.
 Обновлять при каждом заметном шаге. Технические детали запуска — в [README.md](README.md).
 
-**Обновлено:** 2026-10-01
+**Обновлено:** 2026-10-02
 **Последний коммит:** `4ef7859 feat(web): move home page to HeroUI and fix dark theme contrast`
 
 ---
@@ -18,7 +18,7 @@ pnpm workspaces + Turborepo, два приложения и два пакета 
 - `apps/api` — Nest.js 11, TypeScript, порт 3001, глобальный префикс `/api`.
 - `packages/eslint-config` — flat-конфиги `base` / `next` / `nest`. `eslint-config-next` живёт здесь, его версию надо бампать вместе с Next.
 - `packages/typescript-config` — `base.json` / `nextjs.json` / `nestjs.json`.
-- Prettier, EditorConfig, `.gitattributes` (eol=lf), husky + lint-staged + commitlint (Conventional Commits).
+- Prettier, EditorConfig, `.gitattributes` (eol=lf), husky + lint-staged + commitlint (Conventional Commits). С 2026-10-02 `pre-commit` после lint-staged запускает ещё `pnpm lint` и `pnpm test`.
 - `docker-compose.yml` с Postgres 16 — **пока никем не используется**, заготовка на будущее.
 
 ### 2. Аутентификация и главная страница (`18a00ea`)
@@ -231,6 +231,7 @@ HTTP-контракт не изменился: все 47 e2e прошли без
 | Тёмная тема по классу `dark`, выставляемому скриптом                            | HeroUI переключает токены по классу/`data-theme`, а не по медиазапросу; скрипт до отрисовки сохраняет прежнее поведение «как в системе» без вспышки                                                                                |
 | Тесты только на API                                                             | Договорились: фронт проверяется вручную/браузером                                                                                                                                                                                  |
 | Изменение UI завершено только после проверки в браузере и ревью `ui-ux-pro-max` | Решение 2026-10-01: тестов на фронте нет, а ревью формы регистрации нашло проблемы, невидимые по коду (невидимые поля в тёмной теме, стирание паролей). Правило — в `apps/web/CLAUDE.md`                                           |
+| `pre-commit` гоняет `pnpm lint` + `pnpm test`, но не e2e и typecheck            | Решение 2026-10-02: сломанный lint или unit-тест не должен попадать в историю. Unit-тесты не требуют БД, а Turborepo кэширует незатронутые пакеты — хук остаётся быстрым. E2E требуют Postgres, поэтому в хук не идут              |
 | Playwright MCP в project scope (`.mcp.json`)                                    | Браузерная проверка фронта — часть рабочего процесса, а не личная настройка; без зависимости в проекте, `npx` тянет пакет сам                                                                                                      |
 
 ---
