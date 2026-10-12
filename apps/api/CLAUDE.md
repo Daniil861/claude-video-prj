@@ -96,6 +96,7 @@ test/            e2e- и интеграционные спеки, global-setup.t
 | `JWT_EXPIRES_IN`                         | по умолчанию `1h`                                                               |
 | `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` | seed-пользователь `usr_1`; второй — `anna@example.com` с тем же паролем         |
 | `DATABASE_URL`                           | строка подключения к Postgres; в `.env.test` указывает на `video_meetings_test` |
+| `FILES_DIR`                              | каталог файлов встреч, по умолчанию `.files`; в `.env.test` — `.files-test`     |
 
 Тестовые аккаунты: `demo@example.com`, `anna@example.com`, пароль `password123` — появляются в БД после `db:seed`.
 
