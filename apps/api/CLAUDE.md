@@ -100,3 +100,7 @@ test/            e2e- и интеграционные спеки, global-setup.t
 Тестовые аккаунты: `demo@example.com`, `anna@example.com`, пароль `password123` — появляются в БД после `db:seed`.
 
 `PrismaService` читает `DATABASE_URL` из `process.env` напрямую, а не через `ConfigService`: клиент создаётся раньше, чем Nest успевает поднять конфиг. Поэтому в e2e переменная кладётся в окружение в `test/setup-e2e.ts` до импорта модулей.
+
+## File upload
+
+Use this research for it: docs/research-meeting-upload.md
