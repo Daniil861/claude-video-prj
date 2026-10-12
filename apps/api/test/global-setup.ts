@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { config } from 'dotenv';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -9,8 +10,9 @@ const apiRoot = resolve(__dirname, '..');
 
 /**
  * Brings the test database to a known state once per run: applies migrations
- * (creating the database if it does not exist yet), wipes every row left over
- * from the previous run, then seeds the same fixtures the app ships with.
+ * (creating the database if it does not exist yet), wipes every row and every
+ * stored file left over from the previous run, then seeds the same fixtures the
+ * app ships with.
  */
 export default async function globalSetup(): Promise<void> {
   config({ path: resolve(apiRoot, '.env.test'), override: true, quiet: true });
@@ -28,6 +30,15 @@ export default async function globalSetup(): Promise<void> {
     env: { ...process.env, DATABASE_URL: connectionString },
     stdio: 'ignore',
   });
+
+  const filesDir = process.env.FILES_DIR;
+
+  if (!filesDir) {
+    throw new Error('FILES_DIR is not set in apps/api/.env.test');
+  }
+
+  // File rows go away with their meetings (cascade); their bytes are removed here.
+  await rm(resolve(apiRoot, filesDir), { recursive: true, force: true });
 
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 

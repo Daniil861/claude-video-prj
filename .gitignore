@@ -16,6 +16,10 @@ next-env.d.ts
 .eslintcache
 coverage/
 
+# Uploaded meeting files (FILES_DIR) of the API and of its e2e suite
+.files/
+.files-test/
+
 # Playwright MCP output (screenshots, page snapshots, console logs)
 .playwright-mcp/
 
