@@ -77,7 +77,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 pnpm --filter @video-meetings/api test:e2e
 ```
 
-Ожидаемо: 10 unit- и 47 e2e-тестов проходят, lint и typecheck чистые. E2E требуют поднятого Postgres и работают с отдельной БД `video_meetings_test`.
+Ожидаемо: 15 unit- и 61 e2e-тест проходят, lint и typecheck чистые. E2E требуют поднятого Postgres и работают с отдельной БД `video_meetings_test`.
 
 ## Окружение
 

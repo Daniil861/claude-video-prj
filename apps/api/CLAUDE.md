@@ -15,7 +15,7 @@ pnpm --filter @video-meetings/api lint
 pnpm --filter @video-meetings/api typecheck
 ```
 
-Ожидаемо: 10 unit- и 47 e2e-тестов проходят. E2E требуют поднятого Postgres — они работают с отдельной БД `video_meetings_test` из `.env.test` и сами накатывают на неё миграции и сид.
+Ожидаемо: 15 unit- и 61 e2e-тест проходят. E2E требуют поднятого Postgres — они работают с отдельной БД `video_meetings_test` из `.env.test` и сами накатывают на неё миграции и сид.
 
 ```bash
 pnpm --filter @video-meetings/api db:migrate   # создать и накатить миграцию по изменениям схемы
@@ -28,7 +28,7 @@ pnpm --filter @video-meetings/api db:reset     # снести и накатит�
 ```
 src/
   main.ts        bootstrap: CORS, префикс /api, глобальный ValidationPipe
-  app.module.ts  ConfigModule (isGlobal) + CqrsModule.forRoot() + UsersModule + AuthModule + MeetingsModule
+  app.module.ts  ConfigModule (isGlobal) + CqrsModule.forRoot() + UsersModule + AuthModule + MeetingsModule + FilesModule
   auth/          auth.service.ts, auth.controller.ts, jwt-auth.guard.ts,
                  current-user.decorator.ts, jwt-payload.interface.ts,
                  dto/login.dto.ts, dto/register.dto.ts
@@ -38,6 +38,10 @@ src/
                  queries/find-user-by-{email,id}.{query,handler}.ts
   meetings/      meetings.service.ts, meetings.controller.ts, meeting.entity.ts,
                  dto/create-meeting.dto.ts
+  files/         files.controller.ts, files.service.ts, meeting-file.entity.ts, files.module.ts,
+                 meeting-access.interceptor.ts (404 до чтения тела),
+                 file-storage.service.ts + file-storage.module.ts (байты на диске в FILES_DIR),
+                 temp-file.storage.ts (StorageEngine multer поверх FileStorageService)
 prisma/          schema.prisma, migrations/, seed.ts, seed-data.ts
 prisma.config.ts конфиг Prisma 7: путь к схеме, DATABASE_URL, команда сида
 test/            e2e- и интеграционные спеки, global-setup.ts, setup-e2e.ts, jest-e2e.json
@@ -45,21 +49,23 @@ test/            e2e- и интеграционные спеки, global-setup.t
 
 ## Эндпоинты
 
-| Метод  | Путь                    | Описание                                                                                                                   |
-| ------ | ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/api/auth/login`       | `{ email, password }` → `{ accessToken, user }`; 401 при неверных данных, 400 при невалидном теле                          |
-| `POST` | `/api/auth/register`    | `{ email, password }` → 201 и `{ accessToken, user }`; 409 если email занят, 400 при невалидном теле                       |
-| `GET`  | `/api/auth/me`          | текущий пользователь по `Authorization: Bearer <jwt>`                                                                      |
-| `POST` | `/api/meetings`         | `{ title, date, participants: string[], durationMinutes? }` → 201 и встреча; владелец — из токена; 400 при невалидном теле |
-| `GET`  | `/api/meetings?limit=N` | `{ items, total }` — встречи текущего пользователя, новые первыми; без `limit` — все, с ним — от 1 до 50                   |
-| `GET`  | `/api/meetings/:id`     | встреча текущего пользователя; 404 и для несуществующей, и для чужой                                                       |
+| Метод  | Путь                      | Описание                                                                                                                                   |
+| ------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST` | `/api/auth/login`         | `{ email, password }` → `{ accessToken, user }`; 401 при неверных данных, 400 при невалидном теле                                          |
+| `POST` | `/api/auth/register`      | `{ email, password }` → 201 и `{ accessToken, user }`; 409 если email занят, 400 при невалидном теле                                       |
+| `GET`  | `/api/auth/me`            | текущий пользователь по `Authorization: Bearer <jwt>`                                                                                      |
+| `POST` | `/api/meetings`           | `{ title, date, participants: string[], durationMinutes? }` → 201 и встреча; владелец — из токена; 400 при невалидном теле                 |
+| `GET`  | `/api/meetings?limit=N`   | `{ items, total }` — встречи текущего пользователя, новые первыми; без `limit` — все, с ним — от 1 до 50                                   |
+| `GET`  | `/api/meetings/:id`       | встреча текущего пользователя; 404 и для несуществующей, и для чужой                                                                       |
+| `POST` | `/api/meetings/:id/files` | multipart, один файл в поле `file` → 201 и `MeetingFile`; 400 без файла или с лишними частями; 401; 404 для чужой и несуществующей встречи |
+| `GET`  | `/api/meetings/:id/files` | `{ items: MeetingFile[] }`, новые первыми; 401; 404 для чужой и несуществующей встречи                                                     |
 
 ## Правила, которые легко нарушить
 
 - **auth и users общаются только через CQRS.** `AuthService` получает `CommandBus`/`QueryBus` и шлёт `CreateUserCommand`, `FindUserByEmailQuery`, `FindUserByIdQuery`; `UsersModule` регистрирует обработчики и **ничего не экспортирует**. Не инжектируй `UsersService` вне модуля users и не импортируй `UsersModule` в другие модули — нужна новая операция над пользователями, заводи команду или запрос в `users/commands` / `users/queries`. Классы команд/запросов типизированы результатом (`Command<User>`, `Query<User | null>`), `execute` возвращает нужный тип без `as`. Шины глобальные — `CqrsModule.forRoot()` в `AppModule`.
 - **Пароль хэширует auth, users хранит готовый хэш.** `CreateUserCommand` несёт `passwordHash`, а не пароль; `bcrypt` (`hash`/`compare`) — только в `AuthService` и в сиде.
 - **`@nestjs/cqrs` — мажор 11, а не 12.** 12-я требует Nest 12 и поставляется как ESM, что ломает CommonJS-сборку и Jest. Бампать вместе с Nest.
-- **Доступ к БД — только через сервисы.** `PrismaService` инжектится в `UsersService` / `MeetingsService` и никуда больше. Не тяни его в контроллеры, гарды и DTO: граница хранилища проходит по сервисам, и она уже один раз окупилась при переезде с памяти на Postgres.
+- **Доступ к БД — только через сервисы.** `PrismaService` инжектится в `UsersService` / `MeetingsService` / `FilesService` и никуда больше. Не тяни его в контроллеры, гарды и DTO: граница хранилища проходит по сервисам, и она уже один раз окупилась при переезде с памяти на Postgres.
 - **`PublicUser` — явный `Pick`, а не `Omit` от строки таблицы.** Добавишь колонку в модель `User` — она не утечёт в ответ API молча. Именно `Omit` пропустил `createdAt` наружу при миграции.
 - **Чужая встреча — 404, а не 403.** `MeetingsService.findOneByUser` ищет по паре `id` + `ownerId`: ответ не должен выдавать, что такой id существует. Любой новый эндпоинт по `:id` фильтрует по владельцу так же.
 - **Вход — `date`, выход — `startsAt`.** `CreateMeetingDto.date` маппится в колонку `startsAt` в контроллере; ответ и остальные эндпоинты по-прежнему отдают `startsAt`.
@@ -75,12 +81,16 @@ test/            e2e- и интеграционные спеки, global-setup.t
 - **Логирование — через `Logger` из `@nestjs/common`**, не `console.log` (правило `no-console` разрешает только `warn`/`error`).
 - **Типы-«только типы» импортируются через `import type`** — так написан весь существующий код.
 - Сообщения ошибок API — на русском (их показывает фронт).
+- **Файлы: имя от клиента — только в БД.** На диске файл называется сгенерированным id (`FILES_DIR/meetings/<meetingId>/<fileId>`, это же `storageKey`), во время загрузки — `FILES_DIR/.tmp/<uuid>`. `storageKey` в ответ не попадает: `toMeetingFile` маппит явно, как `PublicUser`.
+- **Загрузка никогда не держит файл в памяти.** `FilesModule` регистрирует `MulterModule` со своим `TempFileStorage`; `memoryStorage` и `FileTypeValidator` (он читает `file.buffer`) не использовать.
+- **`MeetingAccessInterceptor` стоит перед `FileInterceptor`** в `@UseInterceptors(...)`: так 404 на чужую встречу уходит до чтения тела, а не после записи всего файла на диск. Это единственное место вне `@CurrentUser()`, где читается `request.user` — у интерсептора нет параметров-декораторов.
+- **`defParamCharset: 'utf8'` у `FileInterceptor` обязателен** — иначе кириллица в имени файла превращается в латиницу-мусор. Лимит `parts` у multer не ставить: busboy с `parts: 1` отвергает и единственный файл (`Too many parts`); лишние части отсекают `files: 1` и `fields: 0`.
 - В `auth.module.ts` есть осознанный `as JwtModuleOptions['signOptions']`: `jsonwebtoken` типизирует `expiresIn` шаблонным литеральным юнионом, значение из конфига его статически не удовлетворяет. Не «чинить».
 
 ## Тесты
 
 - Unit-спеки лежат рядом с кодом (`*.spec.ts`, `rootDir: src`) и **не должны требовать БД**. Всё, что ходит в Postgres, живёт в `test/` (`*.e2e-spec.ts`, отдельный конфиг).
-- `test/global-setup.ts` один раз за прогон накатывает миграции на `video_meetings_test`, чистит таблицы и зовёт функцию сида из `prisma/seed.ts`. Не дублируй данные сида в тестах — импортируй.
+- `test/global-setup.ts` один раз за прогон накатывает миграции на `video_meetings_test`, чистит таблицы, удаляет каталог `FILES_DIR` из `.env.test` и зовёт функцию сида из `prisma/seed.ts`. Строки `MeetingFile` уходят каскадом вместе со встречами. `test/setup-e2e.ts` приводит `FILES_DIR` к абсолютному пути от `apps/api`. Не дублируй данные сида в тестах — импортируй.
 - Тест, создающий свои строки, обязан использовать уникальные значения (email, id владельца): БД переживает прогон, и общие значения делают тесты зависимыми от порядка.
 - Новую бизнес-логику покрывать тестами обязательно: тестируется только API, фронт — вручную.
 
